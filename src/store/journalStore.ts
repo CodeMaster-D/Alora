@@ -9,6 +9,8 @@ interface JournalState {
   
   // Actions
   fetchJournalEntries: (userId: string) => Promise<void>;
+  // Tambahkan fungsi fetch single entry
+  fetchJournalEntry: (entryId: string) => Promise<JournalEntry | null>;
   addJournalEntry: (userId: string, data: JournalForm) => Promise<boolean>;
   updateJournalEntry: (entryId: string, data: Partial<JournalForm>) => Promise<boolean>;
   deleteJournalEntry: (entryId: string) => Promise<boolean>;
@@ -23,20 +25,13 @@ export const useJournalStore = create<JournalState>()(
       
       fetchJournalEntries: async (userId: string) => {
         set({ isLoading: true });
-        
         try {
           const response = await firebaseService.journal.getJournalEntries(userId);
-          
           if (response.success && response.data) {
-            // Sort by date, newest first
             const sortedEntries = [...response.data].sort(
               (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
             );
-            
-            set({ 
-              journalEntries: sortedEntries, 
-              isLoading: false 
-            });
+            set({ journalEntries: sortedEntries, isLoading: false });
           } else {
             set({ isLoading: false });
           }
@@ -45,23 +40,39 @@ export const useJournalStore = create<JournalState>()(
           set({ isLoading: false });
         }
       },
+
+      // Implementasi Fetch Single Entry untuk Edit Page
+      fetchJournalEntry: async (entryId: string) => {
+        // Cek dulu di state lokal untuk performa
+        const localEntry = get().journalEntries.find(e => e.id === entryId);
+        if (localEntry) return localEntry;
+
+        // Jika tidak ada di lokal (misal refresh halaman), ambil dari Firebase
+        try {
+          const response = await firebaseService.journal.getJournalEntry(entryId);
+          if (response.success && response.data) {
+            return response.data;
+          }
+          return null;
+        } catch (error) {
+          console.error("Fetch single journal entry error:", error);
+          return null;
+        }
+      },
       
       addJournalEntry: async (userId: string, data: JournalForm) => {
         set({ isLoading: true });
-        
         try {
           const response = await firebaseService.journal.addJournalEntry(userId, data);
-          
           if (response.success && response.data) {
-            set(state => ({ 
-              journalEntries: [response.data!, ...state.journalEntries], 
-              isLoading: false 
+            set(state => ({
+              journalEntries: [response.data!, ...state.journalEntries],
+              isLoading: false
             }));
             return true;
-          } else {
-            set({ isLoading: false });
-            return false;
           }
+          set({ isLoading: false });
+          return false;
         } catch (error) {
           console.error("Add journal entry error:", error);
           set({ isLoading: false });
@@ -71,10 +82,8 @@ export const useJournalStore = create<JournalState>()(
       
       updateJournalEntry: async (entryId: string, data: Partial<JournalForm>) => {
         set({ isLoading: true });
-        
         try {
           const response = await firebaseService.journal.updateJournalEntry(entryId, data);
-          
           if (response.success && response.data) {
             set(state => ({
               journalEntries: state.journalEntries.map(entry => 
@@ -83,10 +92,9 @@ export const useJournalStore = create<JournalState>()(
               isLoading: false
             }));
             return true;
-          } else {
-            set({ isLoading: false });
-            return false;
           }
+          set({ isLoading: false });
+          return false;
         } catch (error) {
           console.error("Update journal entry error:", error);
           set({ isLoading: false });
@@ -96,20 +104,17 @@ export const useJournalStore = create<JournalState>()(
       
       deleteJournalEntry: async (entryId: string) => {
         set({ isLoading: true });
-        
         try {
           const response = await firebaseService.journal.deleteJournalEntry(entryId);
-          
           if (response.success) {
             set(state => ({
               journalEntries: state.journalEntries.filter(entry => entry.id !== entryId),
               isLoading: false
             }));
             return true;
-          } else {
-            set({ isLoading: false });
-            return false;
           }
+          set({ isLoading: false });
+          return false;
         } catch (error) {
           console.error("Delete journal entry error:", error);
           set({ isLoading: false });

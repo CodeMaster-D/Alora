@@ -1,2 +1,3 @@
-ui loading custom biar lebih profesional
-ui edit journal
+fitur disabilitasnya belum berfungsi
+profile masih eror 
+terapkan loading style baru ke semua component
