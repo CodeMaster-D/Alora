@@ -1,31 +1,31 @@
-/* 1. SEMUA IMPORT WAJIB DI ATAS SENDIRI */
-@import url("https://fonts.googleapis.com/css2?family=OpenDyslexic&family=Atkinson+Hyperlegible&display=swap");
+/* 1. IMPORT FONT & TAILWIND */
+@import url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/data/OpenDyslexic/trebuchet.css');
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap");
 @import "tailwindcss";
 
 /* 2. DEFINISI THEME TAILWIND V4 */
 @theme {
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(222.2 84% 4.9%);
-  
-  --color-primary: hsl(135 20% 58%); /* Sage */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(135 20% 58%);
   --color-primary-foreground: hsl(210 40% 98%);
-  
-  --color-secondary: hsl(231 27% 75%); /* Lavender */
+  --color-secondary: hsl(231 27% 75%);
   --color-secondary-foreground: hsl(222.2 84% 4.9%);
-  
-  --color-accent: hsl(13 43% 64%); /* Terracotta */
+  --color-accent: hsl(13 43% 64%);
   --color-accent-foreground: hsl(222.2 84% 4.9%);
-
-  --color-border: hsl(214.3 31.8% 91.4%);
-  --color-input: hsl(214.3 31.8% 91.4%);
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--border));
   --color-ring: hsl(135 20% 58%);
 
   --radius-lg: 0.5rem;
   --radius-md: calc(0.5rem - 2px);
   --radius-sm: calc(0.5rem - 4px);
+  
+  --font-dyslexic: "OpenDyslexic", sans-serif;
+  --font-atkinson: "Atkinson Hyperlegible", sans-serif;
 }
 
-/* 3. BASE LAYER UNTUK VARIABLE & RESET */
+/* 3. BASE LAYER & ACCESSIBILITY LOGIC */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -39,20 +39,68 @@
     --border: 217.2 32.6% 17.5%;
   }
 
-  * {
-    @apply border-border;
+  /* --- HIGH CONTRAST MODE (Fix Icon & Button) --- */
+  [data-high-contrast="true"] {
+    --background: 0 0% 0% !important;
+    --foreground: 60 100% 50% !important;
+    background-color: black !important;
+    color: #ffff00 !important;
+  }
+
+  [data-high-contrast="true"] * {
+    background-color: transparent !important;
+    color: #ffff00 !important;
+    border-color: #ffff00 !important;
+    box-shadow: none !important;
+  }
+
+  /* Fix Icon Sidebar & Lucide agar kelihatan */
+  [data-high-contrast="true"] svg {
+    stroke: #ffff00 !important;
+  }
+
+  [data-high-contrast="true"] button, 
+  [data-high-contrast="true"] [role="button"] {
+    background-color: #ffff00 !important;
+    color: black !important;
+    border: 2px solid white !important;
+    font-weight: 800 !important;
   }
   
+  [data-high-contrast="true"] button svg {
+    stroke: black !important;
+  }
+
+  /* --- REDUCE MOTION --- */
+  [data-reduced-motion="true"] *,
+  [data-reduced-motion="true"] *::before,
+  [data-reduced-motion="true"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* --- FONT FAMILY OVERRIDES --- */
+  [data-font-family="dyslexic"] * {
+    font-family: "OpenDyslexic", sans-serif !important;
+  }
+  [data-font-family="hyperlegible"] * {
+    font-family: "Atkinson Hyperlegible", sans-serif !important;
+  }
+
+  /* --- DYNAMIC FONT SIZING --- */
+  html[data-font-size="small"] { font-size: 14px; }
+  html[data-font-size="medium"] { font-size: 16px; }
+  html[data-font-size="large"] { font-size: 20px; }
+  html[data-font-size="extra-large"] { font-size: 24px; }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
   }
 }
 
-/* 4. CUSTOM UTILITIES */
-.font-dyslexic {
-  font-family: 'OpenDyslexic', sans-serif;
-}
-
-.font-atkinson {
-  font-family: 'Atkinson Hyperlegible', sans-serif;
+svg {
+  stroke-width: 1.5;
+  flex-shrink: 0;
 }

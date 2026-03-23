@@ -8,14 +8,15 @@ interface AccessibilityState {
   fontFamily: "default" | "dyslexic" | "hyperlegible";
   reducedMotion: boolean;
   screenReader: boolean;
+  language: string; // <-- Tambah ini
   
-  // Actions
   setTheme: (theme: "light" | "dark" | "system") => void;
   toggleHighContrast: () => void;
   setFontSize: (size: "small" | "medium" | "large") => void;
   setFontFamily: (font: "default" | "dyslexic" | "hyperlegible") => void;
   toggleReducedMotion: () => void;
   toggleScreenReader: () => void;
+  setLanguage: (lang: string) => void; // <-- Tambah ini
   resetSettings: () => void;
 }
 
@@ -26,25 +27,20 @@ const initialState = {
   fontFamily: "default" as const,
   reducedMotion: false,
   screenReader: false,
+  language: "id-ID", // <-- Default Indonesia
 };
 
 export const useAccessibilityStore = create<AccessibilityState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...initialState,
-      
       setTheme: (theme) => set({ theme }),
-      
       toggleHighContrast: () => set((state) => ({ highContrast: !state.highContrast })),
-      
       setFontSize: (fontSize) => set({ fontSize }),
-      
       setFontFamily: (fontFamily) => set({ fontFamily }),
-      
       toggleReducedMotion: () => set((state) => ({ reducedMotion: !state.reducedMotion })),
-      
       toggleScreenReader: () => set((state) => ({ screenReader: !state.screenReader })),
-      
+      setLanguage: (language) => set({ language }), // <-- Implementasi setLanguage
       resetSettings: () => set(initialState),
     }),
     {

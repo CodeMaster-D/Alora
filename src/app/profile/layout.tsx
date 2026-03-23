@@ -1,15 +1,8 @@
-// app/profile/layout.tsx
-import React from "react";
+// app/analytics/layout.tsx
+import { ReactNode } from "react";
 
-export default function ProfileLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="w-full h-full">
-      {/* Ini adalah wrapper untuk halaman profile */}
-      {children}
-    </div>
-  );
+export default function AnalyticsLayout({ children }: { children: ReactNode }) {
+  // CUKUP RETURN CHILDREN SAJA
+  // Hapus import Sidebar dan div flex yang membungkusnya di sini
+  return <>{children}</>;
 }

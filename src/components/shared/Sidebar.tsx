@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,143 +11,242 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 import {
   Home,
   Heart,
   BookOpen,
   Wind,
   BarChart3,
-  Settings,
   LogOut,
-  User,
   Menu,
   X,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { useAccessibilityStore } from "../../store/useAccessbilityStore";
+import { useAccessibilityStore } from "@/store/useAccessbilityStore";
+import { useSidebarStore } from "@/store/useSidebarStore";
+import { useState } from "react";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Home", href: "/dashboard", icon: Home },
   { name: "Mood", href: "/mood", icon: Heart },
   { name: "Journal", href: "/journal", icon: BookOpen },
   { name: "Breathe", href: "/breathe", icon: Wind },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Stats", href: "/analytics", icon: BarChart3 },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const { fontSize } = useAccessibilityStore();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleSidebar } = useSidebarStore();
+
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [showTooltips, setShowTooltips] = useState(true);
+
+  const handleToggle = () => {
+    setShowTooltips(false);
+    toggleSidebar();
+    setTimeout(() => setShowTooltips(true), 400);
+  };
 
   const getFontSizeClass = () => {
     switch (fontSize) {
-      case "small":
-        return "text-sm";
-      case "large":
-        return "text-lg";
-      default:
-        return "text-base";
+      case "small": return "text-sm";
+      case "large": return "text-lg";
+      default: return "text-base";
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
   return (
-    <div className={cn(
-      "flex flex-col h-full bg-card border-r transition-all duration-300",
-      isCollapsed ? "w-16" : "w-64"
-    )}>
-      <div className="flex items-center justify-between p-4 border-b">
-        {!isCollapsed && (
-          <h2 className={cn("text-xl font-bold", getFontSizeClass())}>Alora</h2>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="ml-auto"
-        >
-          {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
-        </Button>
+    <TooltipProvider delayDuration={0}>
+      <div className={cn(
+        "hidden md:relative md:block h-screen transition-all duration-500 z-50",
+        isCollapsed ? "w-20" : "w-72"
+      )}>
+        <div className={cn(
+          "fixed m-4 h-[calc(100vh-2rem)] transition-all duration-500 flex flex-col rounded-[2rem] border shadow-2xl",
+          "bg-card/60 backdrop-blur-xl border-white/20 dark:border-white/10",
+          isCollapsed ? "w-16" : "w-64"
+        )}>
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 mb-2">
+            {!isCollapsed && (
+              <motion.h2 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }}
+                className="text-2xl font-semibold bg-gradient-to-br from-primary to-primary/40 bg-clip-text text-transparent ml-2 tracking-tight"
+              >
+                Alora
+              </motion.h2>
+            )}
+            <Button variant="ghost" size="icon" onClick={handleToggle} className={cn("hover:bg-primary/10 transition-colors", isCollapsed && "mx-auto")}>
+              <motion.div
+                animate={{ rotate: isCollapsed ? 180 : 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              >
+                {isCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
+              </motion.div>
+            </Button>
+          </div>
+
+          {/* Nav Items */}
+          <ScrollArea className="flex-1 px-3">
+            <div className="space-y-2">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Tooltip 
+                    key={item.name} 
+                    open={isCollapsed && showTooltips && hoveredItem === item.name}
+                    onOpenChange={(open) => {
+                      if (isCollapsed) setHoveredItem(open ? item.name : null);
+                    }}
+                  >
+                    <TooltipTrigger asChild>
+                      {/* FIX: Link dibungkus asChild agar Radix meneruskan props ke elemen di bawahnya */}
+                      <Link href={item.href} className="block w-full">
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            "w-full rounded-2xl h-12 mb-1 transition-all group relative",
+                            isCollapsed ? "justify-center px-0" : "justify-start px-4",
+                            isActive 
+                              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
+                              : "hover:bg-primary/10 text-muted-foreground hover:text-primary",
+                            "font-normal tracking-wide",
+                            getFontSizeClass()
+                          )}
+                        >
+                          <motion.div
+                            whileHover={{ scale: 1.2, rotate: -5 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                            className={cn(!isCollapsed && "mr-3")}
+                          >
+                            <item.icon className="h-5 w-5" />
+                          </motion.div>
+                          {!isCollapsed && <span>{item.name}</span>}
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    
+                    {isCollapsed && (
+                      <TooltipContent 
+                        side="right" 
+                        sideOffset={15}
+                        className={cn(
+                          "px-4 py-2 text-xs font-semibold rounded-xl border border-white/30 dark:border-white/10",
+                          "bg-white/20 dark:bg-black/20 backdrop-blur-md text-foreground shadow-2xl overflow-visible"
+                        )}
+                      >
+                        <AnimatePresence mode="wait">
+                          {hoveredItem === item.name && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10, scale: 0.9 }}
+                              animate={{ opacity: 1, x: 0, scale: 1 }}
+                              exit={{ opacity: 0, x: -10, scale: 0.9 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            >
+                              {item.name}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </ScrollArea>
+
+          {/* Profile Section */}
+          <div className="p-3 mt-auto border-t border-white/10">
+            <Tooltip 
+              disableHoverableContent
+              open={isCollapsed && showTooltips && hoveredItem === 'profile'}
+              onOpenChange={(open) => isCollapsed && setHoveredItem(open ? 'profile' : null)}
+            >
+              <TooltipTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className={cn("w-full rounded-2xl h-16 transition-all hover:bg-primary/5", isCollapsed ? "justify-center px-0" : "justify-start px-3")}>
+                      <div className="relative">
+                         <Avatar className="h-10 w-10 border-2 border-transparent group-hover:border-primary/20 transition-all shadow-md">
+                          <AvatarImage src={user?.photoURL} />
+                          <AvatarFallback className="bg-primary/10 text-primary">{user?.displayName?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 border-2 border-card rounded-full" />
+                      </div>
+                      {!isCollapsed && (
+                        <div className="ml-3 text-left overflow-hidden">
+                          <p className="text-sm font-normal truncate tracking-wide">{user?.displayName}</p>
+                          <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest text-primary">Member</p>
+                        </div>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" sideOffset={15} className="rounded-2xl backdrop-blur-xl bg-card/80 border-white/20 w-56 shadow-2xl border">
+                    <DropdownMenuItem onClick={logout} className="text-destructive rounded-xl m-1 font-medium focus:bg-destructive/10 cursor-pointer transition-colors">
+                      <LogOut className="mr-2 h-4 w-4" /> Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent 
+                  side="right" 
+                  sideOffset={15} 
+                  className={cn(
+                    "px-4 py-2 text-xs font-semibold rounded-xl border border-white/30 dark:border-white/10",
+                    "bg-white/20 dark:bg-black/20 backdrop-blur-md text-foreground shadow-2xl overflow-visible"
+                  )}
+                >
+                  <AnimatePresence mode="wait">
+                    {hoveredItem === 'profile' && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -10, scale: 0.9 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -10, scale: 0.9 }}
+                      >
+                        Account Info
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </div>
+        </div>
       </div>
 
-      <ScrollArea className="flex-1 p-2">
-        <div className="space-y-1">
+      {/* MOBILE NAV */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2">
+        <div className="bg-card/70 backdrop-blur-xl border border-white/20 shadow-2xl rounded-[2.5rem] h-14 flex items-center justify-center gap-2 px-2">
           {navigation.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-            
+            const isActive = pathname === item.href;
             return (
-              <Button
-                key={item.name}
-                variant={isActive ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full justify-start",
-                  isCollapsed ? "px-2" : "px-3",
-                  getFontSizeClass()
+              <Link key={item.name} href={item.href} className="relative flex flex-col items-center justify-center w-10 h-10">
+                {isActive && (
+                  <motion.div layoutId="activeTab" className="absolute inset-0 bg-primary rounded-full -z-10" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
                 )}
-                asChild
-              >
-                <Link href={item.href}>
-                  <item.icon className="h-5 w-5" />
-                  {!isCollapsed && <span className="ml-3">{item.name}</span>}
-                </Link>
-              </Button>
+                <motion.div
+                  whileHover={{ y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                >
+                  <item.icon className={cn("h-5 w-5 transition-colors duration-200", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                </motion.div>
+              </Link>
             );
           })}
         </div>
-      </ScrollArea>
-
-      <div className="p-2 border-t">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className={cn(
-                "w-full justify-start",
-                isCollapsed ? "px-2" : "px-3",
-                getFontSizeClass()
-              )}
-            >
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={user?.photoURL} alt={user?.displayName} />
-                <AvatarFallback>{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
-              </Avatar>
-              {!isCollapsed && (
-                <span className="ml-3 truncate">{user?.displayName}</span>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/profile" className="flex items-center cursor-pointer">
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/settings" className="flex items-center cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+      </nav>
+    </TooltipProvider>
   );
 }

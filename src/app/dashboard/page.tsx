@@ -2,71 +2,109 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  Heart, 
-  BookOpen, 
-  Wind, 
-  Calendar, 
-  TrendingUp, 
+import {
+  Heart,
+  BookOpen,
+  Wind,
+  Calendar,
+  TrendingUp,
   Plus,
-  BarChart3,
   Smile,
   Frown,
   Meh,
   Activity
 } from "lucide-react";
+// --- IMPORT RECHARTS ---
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { MoodEntry } from "@/types";
-import { useAuthStore } from "@/store/authStore";
-import { useMoodStore } from "@/store/moodStore";
-import { firebaseService } from "@/services/firebase";
+// import { useAuthStore } from "@/store/authStore"; // Dicomment sementara untuk dummy
+// import { useMoodStore } from "@/store/moodStore"; // Dicomment sementara untuk dummy
+// import { firebaseService } from "@/services/firebase"; // Dicomment sementara untuk dummy
 import { cn } from "@/lib/utils";
 
-// --- DEFINISIKAN INTERFACE UNTUK STATS AGAR TIDAK PAKE ANY ---
-interface MoodStats {
-  avgMood: number;
-  moodCounts: {
-    [key: number]: number; // key 1-5, value jumlah hari
-  };
-  totalEntries: number;
-}
+// --- KONFIGURASI MOOD UNTUK CHART & UI ---
+const MOOD_EMOJIS: { [key: number]: string } = {
+  1: "😢",
+  2: "😔",
+  3: "😐",
+  4: "😊",
+  5: "😄",
+};
+
+// --- HELPER: GENERATE DUMMY DATA ---
+// Fungsi ini mensimulasikan data yang akan datang dari Firebase nanti
+const generateDummyMoodEntries = (days: number): MoodEntry[] => {
+  const data: MoodEntry[] = [];
+  const today = new Date();
+  const factorsList = [["Work"], ["Sleep"], ["Exercise"], ["Social"], ["Family"], ["Work", "Stress"]];
+
+  for (let i = 0; i < days; i++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    
+    // Generate mood acak antara 1-5
+    const randomMood = Math.floor(Math.random() * 5) + 1;
+    
+    data.push({
+      id: `dummy-${i}`,
+      userId: "user-dummy",
+      mood: randomMood,
+      timestamp: date.toISOString(),
+      factors: factorsList[Math.floor(Math.random() * factorsList.length)],
+      notes: "This is a dummy note",
+      createdAt: date.toISOString(),
+    });
+  }
+  
+  // Urutkan dari terbaru (untuk Recent Moods)
+  return data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+};
 
 export default function DashboardPage() {
-  const { user } = useAuthStore();
-  const { setMoodEntries } = useMoodStore();
+  // const { user } = useAuthStore(); // Siap untuk digunakan nanti
   const [recentMoods, setRecentMoods] = useState<MoodEntry[]>([]);
-  
-  // FIX: Inisialisasi dengan tipe MoodStats | null
-  const [moodStats, setMoodStats] = useState<MoodStats | null>(null);
+  const [chartData, setChartData] = useState<{ date: string; mood: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
-      
       setIsLoading(true);
       
       try {
-        // Fetch mood entries
-        const moodResponse = await firebaseService.mood.getMoodEntries(user.id);
-        if (moodResponse.success && moodResponse.data) {
-          setMoodEntries(moodResponse.data);
-          
-          // Get the 5 most recent entries
-          const sorted = [...moodResponse.data].sort(
-            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          );
-          setRecentMoods(sorted.slice(0, 5));
-        }
+        // --- LOGIKA DUMMY DATA ---
+        // Nanti ganti blok ini dengan: const response = await firebaseService.mood.getMoodEntries(user.id);
         
-        // Fetch mood statistics
-        const statsResponse = await firebaseService.mood.getMoodStats(user.id, 30);
-        if (statsResponse.success && statsResponse.data) {
-          // Type casting ke MoodStats
-          setMoodStats(statsResponse.data as MoodStats);
-        }
+        // Simulasi delay network
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const dummyEntries = generateDummyMoodEntries(30); // Generate 30 hari terakhir
+        
+        // 1. Set Recent Moods (5 terakhir)
+        setRecentMoods(dummyEntries.slice(0, 5));
+
+        // 2. Set Chart Data (Perlu diurutkan Ascending berdasarkan tanggal untuk Line Chart)
+        const sortedAsc = [...dummyEntries].sort(
+          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+
+        const formattedData = sortedAsc.map(entry => ({
+          date: new Date(entry.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          mood: entry.mood,
+        }));
+        
+        setChartData(formattedData);
+        
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -75,7 +113,7 @@ export default function DashboardPage() {
     };
     
     fetchData();
-  }, [user, setMoodEntries]);
+  }, []); // Dependency user ditambahkan nanti saat pakai auth
 
   const getMoodIcon = (mood: number) => {
     switch (mood) {
@@ -103,7 +141,7 @@ export default function DashboardPage() {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
@@ -141,7 +179,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user?.displayName}. Here&apos;s your mental health overview.
+            Welcome back. Here&apos;s your mental health overview.
           </p>
         </div>
         <Button asChild>
@@ -152,6 +190,7 @@ export default function DashboardPage() {
         </Button>
       </div>
 
+      {/* Stats Cards */}
       <motion.div
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         variants={containerVariants}
@@ -186,7 +225,7 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
-        {/* Card Journal, Breathing, Streak (Tetap sama) */}
+        {/* Card Journal, Breathing, Streak (Static UI) */}
         <motion.div variants={itemVariants}>
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -227,7 +266,9 @@ export default function DashboardPage() {
         </motion.div>
       </motion.div>
 
+      {/* Main Content: Chart & Recent Moods */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* MOOD TREND CHART (Menggunakan Dummy Data) */}
         <motion.div className="lg:col-span-2" variants={itemVariants} initial="hidden" animate="visible">
           <Card>
             <CardHeader>
@@ -235,39 +276,52 @@ export default function DashboardPage() {
                 <TrendingUp className="mr-2 h-5 w-5" />
                 Mood Trend (Last 30 Days)
               </CardTitle>
-              <CardDescription>Your average mood over the past month</CardDescription>
+              <CardDescription>Your mood over time</CardDescription>
             </CardHeader>
             <CardContent>
-              {moodStats ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Average Mood</span>
-                    <span className="text-2xl font-bold">{moodStats.avgMood}/5</span>
-                  </div>
-                  <Progress value={moodStats.avgMood * 20} className="h-2" />
-                  <div className="grid grid-cols-5 gap-2 mt-4">
-                    {[1, 2, 3, 4, 5].map((mood) => (
-                      <div key={mood} className="text-center">
-                        <div className={cn("text-lg", getMoodColor(mood))}>
-                          {getMoodIcon(mood)}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {/* FIX: Sekarang TypeScript tahu moodCounts ada isinya */}
-                          {moodStats.moodCounts[mood] || 0} days
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {chartData.length > 0 ? (
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload[0]) {
+                            const data = payload[0].payload as { date: string; mood: number };
+                            return (
+                              <div className="bg-background border rounded-lg p-3 shadow-lg">
+                                <p className="font-medium">{data.date}</p>
+                                <p className="text-sm">
+                                  Mood: {data.mood} {MOOD_EMOJIS[data.mood]}
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="mood"
+                        stroke="#8884d8"
+                        fill="#8884d8"
+                        fillOpacity={0.3}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
-                  No mood data available for the selected period
+                  No mood data available
                 </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
 
+        {/* RECENT MOODS (Menggunakan Dummy Data) */}
         <motion.div variants={itemVariants} initial="hidden" animate="visible">
           <Card>
             <CardHeader>
@@ -305,7 +359,7 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Quick Actions (Tetap sama) */}
+      {/* Quick Actions */}
       <motion.div variants={itemVariants} initial="hidden" animate="visible">
         <Card>
           <CardHeader>

@@ -1,3 +1,4 @@
-fitur disabilitasnya belum berfungsi
+font nya masih 1 yg bisa di ubah aksesbilitas
+font ketika ubah thema itu harus sesuai enak di lihat di dalam tool bar
 profile masih eror 
 terapkan loading style baru ke semua component
