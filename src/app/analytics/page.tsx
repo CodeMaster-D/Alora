@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -22,6 +22,9 @@ import {
   Download, 
   Heart, 
   Smile, 
+  Zap, 
+  Activity,
+  Target
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +34,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/authStore";
 
+// --- Types & Interfaces ---
 interface MoodData {
   date: string;
   mood: number;
@@ -61,34 +65,28 @@ interface AnalyticsData {
   }[];
 }
 
-const MOOD_COLORS = {
-  1: "#ef4444", // red
-  2: "#f97316", // orange
-  3: "#eab308", // yellow
-  4: "#22c55e", // green
-  5: "#10b981", // emerald
+const MOOD_COLORS: Record<number, string> = {
+  1: "#ef4444", 2: "#f97316", 3: "#eab308", 4: "#10b981", 5: "#6366f1",
 };
 
-const MOOD_EMOJIS = {
-  1: "😢",
-  2: "😔",
-  3: "😐",
-  4: "😊",
-  5: "😄",
+const MOOD_EMOJIS: Record<number, string> = {
+  1: "😢", 2: "😔", 3: "😐", 4: "😊", 5: "😄",
 };
 
-const MOOD_LABELS = {
-  1: "Very Sad",
-  2: "Sad",
-  3: "Neutral",
-  4: "Happy",
-  5: "Very Happy",
+const MOOD_LABELS: Record<number, string> = {
+  1: "Very Sad", 2: "Sad", 3: "Neutral", 4: "Happy", 5: "Very Happy",
 };
 
-// --- FIX: Export default harus didefinisikan dengan jelas ---
+// --- Custom Components ---
+const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+  <Card className={`bg-white/40 dark:bg-black/10 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[32px] overflow-hidden transition-all duration-300 ${className}`}>
+    {children}
+  </Card>
+);
+
 const AnalyticsPage = () => {
   const { user } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
@@ -122,8 +120,7 @@ const AnalyticsPage = () => {
           { name: "Reading", count: 20, positiveImpact: 1.4 },
         ],
       };
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       setAnalyticsData(mockData);
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);
@@ -132,54 +129,32 @@ const AnalyticsPage = () => {
     }
   };
 
-  const generateMockData = (days: number): MoodData[] => {
+  function generateMockData(days: number): MoodData[] {
     const data: MoodData[] = [];
     const today = new Date();
-    
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      
       data.push({
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         mood: Math.floor(Math.random() * 5) + 1,
         emotion: ['happy', 'sad', 'anxious', 'calm', 'excited'][Math.floor(Math.random() * 5)],
-        triggers: ['work', 'sleep', 'exercise', 'social'].slice(0, Math.floor(Math.random() * 3) + 1),
-        activities: ['meditation', 'journaling', 'walking', 'reading'].slice(0, Math.floor(Math.random() * 2) + 1),
+        triggers: ['work'],
+        activities: ['exercise'],
       });
     }
-    
     return data;
-  };
+  }
 
-  const exportReport = () => {
-    const dataStr = JSON.stringify(analyticsData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `mood-analytics-${new Date().toISOString().split('T')[0]}.json`;
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
-
-  const getCurrentData = () => {
+  const getCurrentData = (): MoodData[] => {
     if (!analyticsData) return [];
-    switch (timeRange) {
-      case 'week': return analyticsData.weekly;
-      case 'month': return analyticsData.monthly;
-      case 'year': return analyticsData.yearly;
-      default: return analyticsData.monthly;
-    }
+    return analyticsData[timeRange === 'week' ? 'weekly' : timeRange === 'month' ? 'monthly' : 'yearly'];
   };
 
   const getMoodDistribution = () => {
     const data = getCurrentData();
     const distribution = [0, 0, 0, 0, 0];
-    
-    data.forEach(entry => {
-      distribution[entry.mood - 1]++;
-    });
-    
+    data.forEach(entry => distribution[entry.mood - 1]++);
     return [
       { name: 'Very Sad', value: distribution[0], color: MOOD_COLORS[1] },
       { name: 'Sad', value: distribution[1], color: MOOD_COLORS[2] },
@@ -191,345 +166,230 @@ const AnalyticsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 max-w-7xl">
-        <div className="mb-8">
-          <Skeleton className="h-8 w-48 mb-2" />
-          <Skeleton className="h-4 w-96" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16 mb-2" />
-                <Skeleton className="h-2 w-full" />
-              </CardContent>
-            </Card>
-          ))}
+      <div className="container mx-auto p-8 max-w-7xl space-y-8">
+        <Skeleton className="h-10 w-64 rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32 rounded-3xl" />)}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="container mx-auto p-6 max-w-7xl text-foreground min-h-screen transition-colors duration-300">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.6 }}
       >
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Mood Analytics</h1>
-            <p className="text-muted-foreground">Track your emotional patterns and insights</p>
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-medium tracking-tight">
+              Emotional Intelligence
+            </h1>
+            <p className="text-foreground/60 font-medium italic">Your mental health analytics dashboard</p>
           </div>
           
-          <div className="flex gap-2">
-            <Select value={timeRange} onValueChange={(value: 'week' | 'month' | 'year') => setTimeRange(value)}>
-              <SelectTrigger className="w-32">
+          <div className="flex items-center gap-3 p-1.5 bg-white/30 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/20">
+            <Select value={timeRange} onValueChange={(v: 'week' | 'month' | 'year') => setTimeRange(v)}>
+              <SelectTrigger className="w-32 bg-transparent border-none focus:ring-0 font-medium text-foreground shadow-none">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Week</SelectItem>
-                <SelectItem value="month">Month</SelectItem>
-                <SelectItem value="year">Year</SelectItem>
+              <SelectContent className="rounded-xl border-white/20 backdrop-blur-3xl bg-white/80 dark:bg-black/80">
+                <SelectItem value="week">Weekly</SelectItem>
+                <SelectItem value="month">Monthly</SelectItem>
+                <SelectItem value="year">Yearly</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={exportReport}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
+            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/40 text-foreground transition-colors">
+              <Download className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Mood</CardTitle>
-              <Heart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center gap-2">
-                {analyticsData?.patterns.averageMood.toFixed(1)}
-                <span className="text-lg">
-                  {MOOD_EMOJIS[Math.round(analyticsData?.patterns.averageMood || 3) as keyof typeof MOOD_EMOJIS]}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {MOOD_LABELS[Math.round(analyticsData?.patterns.averageMood || 3) as keyof typeof MOOD_LABELS]}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Best Day</CardTitle>
-              <Smile className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{analyticsData?.patterns.bestDay}</div>
-              <p className="text-xs text-muted-foreground">Your happiest day</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Improvement</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                +{analyticsData?.patterns.improvement}%
-              </div>
-              <p className="text-xs text-muted-foreground">From last period</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Entries</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{getCurrentData().length}</div>
-              <p className="text-xs text-muted-foreground">Mood entries</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs defaultValue="trends" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="trends">Trends</TabsTrigger>
-            <TabsTrigger value="patterns">Patterns</TabsTrigger>
-            <TabsTrigger value="triggers">Triggers</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="trends" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Mood Trend</CardTitle>
-                  <CardDescription>Your mood over time</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={getCurrentData()}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} />
-                        <Tooltip 
-                          content={({ active, payload }) => {
-                            if (active && payload && payload[0]) {
-                              const data = payload[0].payload as MoodData;
-                              return (
-                                <div className="bg-background border rounded-lg p-3 shadow-lg">
-                                  <p className="font-medium">{data.date}</p>
-                                  <p className="text-sm">
-                                    Mood: {data.mood} {MOOD_EMOJIS[data.mood as keyof typeof MOOD_EMOJIS]}
-                                  </p>
-                                  <p className="text-sm">Emotion: {data.emotion}</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="mood" 
-                          stroke="#8884d8" 
-                          fill="#8884d8" 
-                          fillOpacity={0.3}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Mood Distribution</CardTitle>
-                  <CardDescription>How often you feel each mood</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={getMoodDistribution()}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          // --- FIX: Safe check untuk percent ---
-                          label={({ name, percent }) => `${name} ${(percent ? percent * 100 : 0).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {getMoodDistribution().map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="patterns" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Positive Activities</CardTitle>
-                  <CardDescription>Activities that boost your mood</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {analyticsData?.activities.map((activity, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>{activity.name}</span>
-                          <span className="text-muted-foreground">
-                            {activity.count} times
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Progress value={activity.positiveImpact * 20} className="flex-1" />
-                          <span className="text-sm text-green-600">
-                            +{activity.positiveImpact}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Weekly Pattern</CardTitle>
-                  <CardDescription>Your mood by day of week</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[250px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[
-                        { day: 'Mon', mood: 3.2 },
-                        { day: 'Tue', mood: 3.5 },
-                        { day: 'Wed', mood: 3.8 },
-                        { day: 'Thu', mood: 3.6 },
-                        { day: 'Fri', mood: 4.1 },
-                        { day: 'Sat', mood: 3.9 },
-                        { day: 'Sun', mood: 3.7 },
-                      ]}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="day" />
-                        <YAxis domain={[1, 5]} />
-                        <Tooltip />
-                        <Bar dataKey="mood" fill="#8884d8" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="triggers" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Negative Triggers</CardTitle>
-                  <CardDescription>What affects your mood negatively</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {analyticsData?.triggers.map((trigger, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>{trigger.name}</span>
-                          <span className="text-muted-foreground">
-                            {trigger.count} times
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Progress value={Math.abs(trigger.impact) * 20} className="flex-1" />
-                          <span className="text-sm text-red-600">
-                            {trigger.impact}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Trigger Analysis</CardTitle>
-                  <CardDescription>Insights about your triggers</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                      <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">💡 Key Insight</h4>
-                      <p className="text-sm text-blue-800 dark:text-blue-200">
-                        Work stress is your most frequent negative trigger. Consider stress management techniques.
-                      </p>
-                    </div>
-                    <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                      <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">🌱 Recommendation</h4>
-                      <p className="text-sm text-green-800 dark:text-green-200">
-                        Exercise and social time have the most positive impact on your mood.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="calendar" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Mood Calendar</CardTitle>
-                <CardDescription>Visual overview of your moods this month</CardDescription>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {[
+            { title: "Average Mood", val: analyticsData?.patterns.averageMood.toFixed(1), sub: MOOD_LABELS[Math.round(analyticsData?.patterns.averageMood || 3)], icon: Heart, color: "text-rose-500", bg: "bg-rose-500/10", emoji: MOOD_EMOJIS[Math.round(analyticsData?.patterns.averageMood || 3)] },
+            { title: "Peak Condition", val: analyticsData?.patterns.bestDay, sub: "Happiest trend", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" },
+            { title: "Period Growth", val: `+${analyticsData?.patterns.improvement}%`, sub: "Progress made", icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-500/10" },
+            { title: "Total Logs", val: getCurrentData().length, sub: "Entries recorded", icon: Activity, color: "text-emerald-500", bg: "bg-emerald-500/10" }
+          ].map((item, i) => (
+            <GlassCard key={i}>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] uppercase tracking-[0.15em] text-foreground/50 font-medium">{item.title}</span>
+                  <div className={`p-2 ${item.bg} rounded-xl`}><item.icon className={`h-4 w-4 ${item.color}`} strokeWidth={1.5} /></div>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-7 gap-2">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                    <div key={day} className="text-center text-sm font-medium p-2">{day}</div>
-                  ))}
-                  {Array.from({ length: 35 }, (_, i) => {
-                    const day = i - 2; 
-                    const isCurrentMonth = day >= 1 && day <= 30;
-                    const moodEntry = isCurrentMonth ? getCurrentData()[day - 1] : null;
-                    return (
-                      <div
-                        key={i}
-                        className={`aspect-square rounded-lg border flex flex-col items-center justify-center ${isCurrentMonth ? 'hover:bg-muted cursor-pointer' : 'opacity-30'} ${moodEntry ? 'border-2' : 'border-dashed'}`}
-                        style={{ borderColor: moodEntry ? MOOD_COLORS[moodEntry.mood as keyof typeof MOOD_COLORS] : undefined }}
-                      >
-                        {isCurrentMonth && (
-                          <>
-                            <span className="text-xs">{day}</span>
-                            {moodEntry && <span className="text-lg">{MOOD_EMOJIS[moodEntry.mood as keyof typeof MOOD_EMOJIS]}</span>}
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="text-3xl font-medium flex items-baseline gap-2">
+                  {item.val}
+                  {item.emoji && <span className="text-xl opacity-90">{item.emoji}</span>}
                 </div>
+                <p className="text-xs font-medium text-foreground/40 mt-1">{item.sub}</p>
               </CardContent>
-            </Card>
+            </GlassCard>
+          ))}
+        </div>
+
+        <Tabs defaultValue="overview" className="space-y-8">
+          <TabsList className="bg-white/20 dark:bg-white/5 p-1 rounded-2xl border border-white/20 h-12">
+            <TabsTrigger value="overview" className="rounded-xl px-8 font-medium data-[state=active]:bg-white/60 dark:data-[state=active]:bg-white/10 text-foreground/50 data-[state=active]:text-foreground shadow-none border-none transition-all">Overview</TabsTrigger>
+            <TabsTrigger value="dynamics" className="rounded-xl px-8 font-medium data-[state=active]:bg-white/60 dark:data-[state=active]:bg-white/10 text-foreground/50 data-[state=active]:text-foreground shadow-none border-none transition-all">Dynamics</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <GlassCard className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg font-medium">Mood Trajectory</CardTitle>
+                  <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Emotional variations per day</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[350px] w-full pt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={getCurrentData()} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.5 }} dy={10} />
+                      <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.5 }} dx={-10} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(20px)', backgroundColor: 'rgba(255,255,255,0.8)', color: '#000' }}
+                      />
+                      <Area type="monotone" dataKey="mood" stroke="var(--color-primary)" strokeWidth={2.5} fill="url(#colorMood)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </GlassCard>
+
+              <GlassCard>
+                <CardHeader>
+                  <CardTitle className="text-lg font-medium">Distribution</CardTitle>
+                  <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Ratio of daily sentiments</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[350px] flex flex-col items-center justify-center relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={getMoodDistribution()}
+                        innerRadius={80}
+                        outerRadius={105}
+                        paddingAngle={8}
+                        cornerRadius={12}
+                        dataKey="value"
+                        stroke="none"
+                        activeShape={{ opacity: 0.8 }}
+                      >
+                        {getMoodDistribution().map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip cursor={{ fill: 'transparent' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[9px] font-medium text-foreground/30 uppercase tracking-[0.2em]">Status</span>
+                    <span className="text-xl font-medium text-primary tracking-tight">STABLE</span>
+                  </div>
+                </CardContent>
+              </GlassCard>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <GlassCard>
+                <CardHeader>
+                  <CardTitle className="text-lg font-medium">Weekly Pattern</CardTitle>
+                  <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Mean mood across the week</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px] pt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={[
+                      { day: 'Mon', mood: 3.2 }, { day: 'Tue', mood: 3.5 }, { day: 'Wed', mood: 3.8 },
+                      { day: 'Thu', mood: 3.6 }, { day: 'Fri', mood: 4.1 }, { day: 'Sat', mood: 3.9 }, { day: 'Sun', mood: 3.7 },
+                    ]}>
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.5 }} />
+                      <Tooltip cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
+                      <Bar 
+                        dataKey="mood" 
+                        fill="var(--color-primary)" 
+                        radius={[12, 12, 12, 12]} 
+                        barSize={28}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </GlassCard>
+
+              <div className="space-y-6">
+                <GlassCard className="bg-primary/5 border-primary/20">
+                  <CardHeader className="pb-2 flex flex-row items-center gap-4">
+                    <div className="h-10 w-10 bg-primary/20 rounded-2xl flex items-center justify-center text-primary">
+                      <Target className="h-5 w-5" strokeWidth={1.5} />
+                    </div>
+                    <CardTitle className="text-sm font-medium uppercase tracking-tight">System Insight</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm font-medium leading-relaxed text-foreground/70">
+                    High consistency detected on <span className="text-primary">Fridays</span>. Your average mood improves by 0.8 points when ‘Social Time’ is logged as a trigger.
+                  </CardContent>
+                </GlassCard>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <GlassCard className="p-5 flex flex-col justify-center items-center">
+                    <Smile className="h-5 w-5 text-primary/60 mb-2" strokeWidth={1.5} />
+                    <span className="text-[9px] font-medium text-foreground/30 uppercase tracking-[0.1em]">Top Catalyst</span>
+                    <span className="text-sm font-medium">Exercise</span>
+                  </GlassCard>
+                  <GlassCard className="p-5 flex flex-col justify-center items-center">
+                    <Calendar className="h-5 w-5 text-accent/60 mb-2" strokeWidth={1.5} />
+                    <span className="text-[9px] font-medium text-foreground/30 uppercase tracking-[0.1em]">Accuracy</span>
+                    <span className="text-sm font-medium">94%</span>
+                  </GlassCard>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="dynamics" className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <GlassCard>
+              <CardHeader>
+                <CardTitle className="text-lg font-medium">Positive Correlation</CardTitle>
+                <CardDescription className="font-medium text-foreground/40 text-xs">Activities that enhance your well-being</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {analyticsData?.activities.map((act, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <div className="flex justify-between text-xs font-medium uppercase tracking-tighter opacity-80">
+                      <span>{act.name}</span>
+                      <span className="text-primary">{act.count} pts</span>
+                    </div>
+                    <Progress value={act.positiveImpact * 20} className="h-1.5 bg-white/10" />
+                  </div>
+                ))}
+              </CardContent>
+            </GlassCard>
+            <GlassCard>
+              <CardHeader>
+                <CardTitle className="text-lg font-medium">Stress Factors</CardTitle>
+                <CardDescription className="font-medium text-foreground/40 text-xs">Negative triggers to manage</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {analyticsData?.triggers.map((trig, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <div className="flex justify-between text-xs font-medium uppercase tracking-tighter opacity-80">
+                      <span>{trig.name}</span>
+                      <span className="text-rose-400">{Math.abs(trig.impact)} severity</span>
+                    </div>
+                    <Progress value={Math.abs(trig.impact) * 20} className="h-1.5 bg-white/10" />
+                  </div>
+                ))}
+              </CardContent>
+            </GlassCard>
           </TabsContent>
         </Tabs>
       </motion.div>
@@ -537,5 +397,4 @@ const AnalyticsPage = () => {
   );
 };
 
-// --- FIX: Export default harus di paling bawah dan jelas ---
 export default AnalyticsPage;
