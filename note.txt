@@ -1,3 +1,4 @@
 font nya sisa 1 yg belum bisa di ubah aksesbilitas
 font ketika ubah thema itu harus sesuai enak di lihat di dalam tool bar
 profile masih eror 
+ini branch terbaru
