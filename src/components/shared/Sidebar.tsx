@@ -111,7 +111,6 @@ export function Sidebar() {
                     }}
                   >
                     <TooltipTrigger asChild>
-                      {/* FIX: Link dibungkus asChild agar Radix meneruskan props ke elemen di bawahnya */}
                       <Link href={item.href} className="block w-full">
                         <Button
                           variant="ghost"
@@ -226,27 +225,50 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* MOBILE NAV */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2">
-        <div className="bg-card/70 backdrop-blur-xl border border-white/20 shadow-2xl rounded-[2.5rem] h-14 flex items-center justify-center gap-2 px-2">
+      {/* MOBILE NAV - REDESIGNED (LEFT ALIGNED + STAGGER ANIMATION) */}
+      <motion.nav 
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { 
+            opacity: 1,
+            transition: { 
+              staggerChildren: 0.1, // Jeda antar icon
+              delayChildren: 0.2 // Jeda sebelum mulai
+            } 
+          }
+        }}
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2"
+      >
+        <div className="bg-card/70 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full h-14 flex items-center justify-start gap-2 px-3 ml-2 w-fit">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             return (
-              <Link key={item.name} href={item.href} className="relative flex flex-col items-center justify-center w-10 h-10">
-                {isActive && (
-                  <motion.div layoutId="activeTab" className="absolute inset-0 bg-primary rounded-full -z-10" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
-                )}
-                <motion.div
-                  whileHover={{ y: -2 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                >
-                  <item.icon className={cn("h-5 w-5 transition-colors duration-200", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
-                </motion.div>
-              </Link>
+              <motion.div
+                key={item.name}
+                variants={{
+                  hidden: { opacity: 0, x: -20 }, // Muncul dari kiri
+                  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 20 } }
+                }}
+              >
+                <Link href={item.href} className="relative flex flex-col items-center justify-center w-10 h-10">
+                  {isActive && (
+                    <motion.div layoutId="activeTab" className="absolute inset-0 bg-primary rounded-full -z-10" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+                  )}
+                  <motion.div
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.9 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  >
+                    <item.icon className={cn("h-5 w-5 transition-colors duration-200", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                  </motion.div>
+                </Link>
+              </motion.div>
             );
           })}
         </div>
-      </nav>
+      </motion.nav>
     </TooltipProvider>
   );
 }
