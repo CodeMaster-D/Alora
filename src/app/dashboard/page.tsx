@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
   BookOpen,
@@ -29,16 +29,14 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { MoodEntry } from "@/types";
 import { cn } from "@/lib/utils";
 
 // --- KONFIGURASI MOOD ---
 const MOOD_EMOJIS: { [key: number]: string } = {
   1: "😢", 2: "😔", 3: "😐", 4: "😊", 5: "😄",
-};
-
-const MOOD_COLORS: Record<number, string> = {
-  1: "#ef4444", 2: "#f97316", 3: "#eab308", 4: "#10b981", 5: "#6366f1",
 };
 
 // --- GLASSMOPHISM WRAPPER ---
@@ -51,7 +49,7 @@ const GlassCard = ({ children, className = "" }: { children: React.ReactNode, cl
   </Card>
 );
 
-// --- HELPER: GENERATE DUMMY DATA (No Logic Change) ---
+// --- HELPER: GENERATE DUMMY DATA ---
 const generateDummyMoodEntries = (days: number): MoodEntry[] => {
   const data: MoodEntry[] = [];
   const today = new Date();
@@ -82,7 +80,8 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Simulasi loading biar keliatan skeletonnya
+        await new Promise(resolve => setTimeout(resolve, 1500));
         const dummyEntries = generateDummyMoodEntries(30);
         setRecentMoods(dummyEntries.slice(0, 5));
         const sortedAsc = [...dummyEntries].sort(
@@ -127,18 +126,6 @@ export default function DashboardPage() {
     visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="h-12 w-12 rounded-2xl bg-primary/20 backdrop-blur-xl border border-primary/20"
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 lg:p-10 space-y-10 max-w-7xl mx-auto min-h-screen">
       {/* Header */}
@@ -146,7 +133,7 @@ export default function DashboardPage() {
         <div className="space-y-1">
           <h1 className="text-4xl font-medium tracking-tight">Dashboard</h1>
           <p className="text-foreground/50 font-medium italic">
-            Welcome back! Here&apos;s your mental health overview.
+            Welcome back! Here &apos;s your mental health overview.
           </p>
         </div>
         <Button className="rounded-2xl h-12 px-6 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all font-medium" asChild>
@@ -157,39 +144,69 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards dengan Skeleton State */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { title: "Mood Today", val: recentMoods[0]?.mood ? `${recentMoods[0].mood}/5` : "N/A", sub: recentMoods[0] ? `Logged at ${new Date(recentMoods[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "No entry", icon: Heart, color: "text-rose-500", bg: "bg-rose-500/10", emoji: MOOD_EMOJIS[recentMoods[0]?.mood] },
-          { title: "Journal Entries", val: "12", sub: "+3 from last month", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
-          { title: "Breathing", val: "8", sub: "Sessions this week", icon: Wind, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-          { title: "Streak", val: "5 Days", sub: "Keep the momentum!", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" }
-        ].map((item, i) => (
-          <motion.div key={i} variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: i * 0.1 }}>
-            <GlassCard>
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase tracking-[0.15em] text-foreground/40 font-medium">{item.title}</span>
-                  <div className={`p-2 ${item.bg} rounded-xl`}><item.icon className={`h-4 w-4 ${item.color}`} strokeWidth={1.5} /></div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-medium flex items-baseline gap-2">
-                  {item.val}
-                  {item.emoji && <span className="text-xl">{item.emoji}</span>}
-                </div>
-                <p className="text-xs font-medium text-foreground/30 mt-1">{item.sub}</p>
-              </CardContent>
-            </GlassCard>
-          </motion.div>
-        ))}
+        <AnimatePresence mode="wait">
+          {isLoading ? (
+            // Skeleton View
+            Array(4).fill(0).map((_, i) => (
+              <motion.div 
+                key={`skeleton-card-${i}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <GlassCard className="p-6 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-8 w-8 rounded-xl" />
+                  </div>
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-3 w-32" />
+                </GlassCard>
+              </motion.div>
+            ))
+          ) : (
+            // Content View
+            [
+              { title: "Mood Today", val: recentMoods[0]?.mood ? `${recentMoods[0].mood}/5` : "N/A", sub: recentMoods[0] ? `Logged at ${new Date(recentMoods[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "No entry", icon: Heart, color: "text-rose-500", bg: "bg-rose-500/10", emoji: MOOD_EMOJIS[recentMoods[0]?.mood] },
+              { title: "Journal Entries", val: "12", sub: "+3 from last month", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
+              { title: "Breathing", val: "8", sub: "Sessions this week", icon: Wind, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+              { title: "Streak", val: "5 Days", sub: "Keep the momentum!", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" }
+            ].map((item, i) => (
+              <motion.div 
+                key={`stat-card-${i}`} 
+                variants={itemVariants} 
+                initial="hidden" 
+                animate="visible" 
+                transition={{ delay: i * 0.1 }}
+              >
+                <GlassCard>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] uppercase tracking-[0.15em] text-foreground/40 font-medium">{item.title}</span>
+                      <div className={`p-2 ${item.bg} rounded-xl`}><item.icon className={`h-4 w-4 ${item.color}`} strokeWidth={1.5} /></div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-medium flex items-baseline gap-2">
+                      {item.val}
+                      {item.emoji && <span className="text-xl">{item.emoji}</span>}
+                    </div>
+                    <p className="text-xs font-medium text-foreground/30 mt-1">{item.sub}</p>
+                  </CardContent>
+                </GlassCard>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Area Chart - Styled like Analytics Page */}
+        {/* Area Chart Container */}
         <motion.div className="lg:col-span-2" variants={itemVariants} initial="hidden" animate="visible">
-          <GlassCard>
+          <GlassCard className="h-full">
             <CardHeader>
               <CardTitle className="text-lg font-medium flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary/60" />
@@ -197,29 +214,36 @@ export default function DashboardPage() {
               </CardTitle>
               <CardDescription className="text-xs font-medium text-foreground/40">30-day emotional trend</CardDescription>
             </CardHeader>
-            <CardContent className="h-[350px] pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.4 }} dy={10} />
-                  <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.4 }} dx={-10} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(20px)', backgroundColor: 'rgba(255,255,255,0.8)', color: '#000' }}
-                  />
-                  <Area type="monotone" dataKey="mood" stroke="#8884d8" strokeWidth={3} fill="url(#colorMood)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <CardContent className={cn("h-[350px] pt-4", isLoading && "flex items-center justify-center")}>
+              {isLoading ? (
+                <div className="flex flex-col items-center gap-4">
+                  <LoadingSpinner size="lg" text="Analyzing trends..." />
+                  <Skeleton className="h-[200px] w-[300px] md:w-[500px] rounded-2xl opacity-50" />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.4 }} dy={10} />
+                    <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.4 }} dx={-10} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(20px)', backgroundColor: 'rgba(255,255,255,0.8)', color: '#000' }}
+                    />
+                    <Area type="monotone" dataKey="mood" stroke="#8884d8" strokeWidth={3} fill="url(#colorMood)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </GlassCard>
         </motion.div>
 
-        {/* Recent Moods - More informative */}
+        {/* Recent Moods History */}
         <motion.div variants={itemVariants} initial="hidden" animate="visible">
           <GlassCard className="h-full">
             <CardHeader>
@@ -231,33 +255,45 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-5">
-                {recentMoods.map((entry) => (
-                  <div key={entry.id} className="group flex items-center justify-between p-3 rounded-2xl hover:bg-white/40 transition-colors">
-                    <div className="flex items-center space-x-4">
-                      <div className={cn("p-2.5 rounded-xl", getMoodColorClass(entry.mood))}>
-                        {getMoodIcon(entry.mood)}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">
-                          {new Date(entry.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                        </div>
-                        <div className="text-[10px] font-medium text-foreground/40 uppercase tracking-wider">
-                          {entry.factors.join(" • ")}
-                        </div>
+                {isLoading ? (
+                  Array(5).fill(0).map((_, i) => (
+                    <div key={`history-skeleton-${i}`} className="flex items-center gap-4">
+                      <Skeleton className="h-10 w-10 rounded-xl" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-20" />
                       </div>
                     </div>
-                    <div className="text-sm font-medium opacity-60 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                      {entry.mood}/5 <ChevronRight className="h-3 w-3" />
+                  ))
+                ) : (
+                  recentMoods.map((entry) => (
+                    <div key={entry.id} className="group flex items-center justify-between p-3 rounded-2xl hover:bg-white/40 transition-colors">
+                      <div className="flex items-center space-x-4">
+                        <div className={cn("p-2.5 rounded-xl", getMoodColorClass(entry.mood))}>
+                          {getMoodIcon(entry.mood)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">
+                            {new Date(entry.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </div>
+                          <div className="text-[10px] font-medium text-foreground/40 uppercase tracking-wider">
+                            {entry.factors.join(" • ")}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-sm font-medium opacity-60 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                        {entry.mood}/5 <ChevronRight className="h-3 w-3" />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </GlassCard>
         </motion.div>
       </div>
 
-      {/* Quick Actions - Liquid Style */}
+      {/* Quick Actions */}
       <motion.div variants={itemVariants} initial="hidden" animate="visible">
         <GlassCard>
           <CardHeader>
