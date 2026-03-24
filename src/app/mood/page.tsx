@@ -3,294 +3,273 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Heart, 
-  Plus, 
   X, 
-  Calendar, 
-  Zap,
-  TrendingUp
+  History,
+  LayoutGrid,
+  ChevronRight,
+  Clock,
+  Plus,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuthStore } from "@/store/authStore";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-
-// --- IMPORT SONNER DISINI ---
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
+// --- INTERFACES ---
 interface MoodEntry {
   id: string;
   mood: number;
   emotion: string;
-  color: string;
   emoji: string;
   triggers: string[];
-  activities: string[];
   notes: string;
-  timestamp: Date;
+  timestamp: string; 
 }
 
-interface MoodOption {
-  value: number;
-  label: string;
-  emoji: string;
-  color: string;
-  description: string;
-}
-
-const moodOptions: MoodOption[] = [
-  { value: 1, label: "Very Sad", emoji: "😢", color: "#ef4444", description: "Feeling extremely down" },
-  { value: 2, label: "Sad", emoji: "😔", color: "#f97316", description: "Feeling down or blue" },
-  { value: 3, label: "Neutral", emoji: "😐", color: "#eab308", description: "Feeling neither good nor bad" },
-  { value: 4, label: "Happy", emoji: "😊", color: "#22c55e", description: "Feeling good and positive" },
-  { value: 5, label: "Very Happy", emoji: "😄", color: "#10b981", description: "Feeling extremely happy" },
+const moodOptions = [
+  { value: 1, label: "Sad", emoji: "😢" },
+  { value: 2, label: "Down", emoji: "😔" },
+  { value: 3, label: "Neutral", emoji: "😐" },
+  { value: 4, label: "Good", emoji: "😊" },
+  { value: 5, label: "Great", emoji: "😄" },
 ];
-
-const commonTriggers = ["Work Stress", "Lack of Sleep", "Exercise", "Social Time", "Weather", "Relationships", "Health", "Finances"];
-const commonActivities = ["Meditation", "Exercise", "Reading", "Music", "Walking", "Journaling", "Gaming", "Nap"];
 
 const emotionOptions = [
-  { value: "happy", label: "Happy", emoji: "😊", color: "#fbbf24" },
-  { value: "sad", label: "Sad", emoji: "😢", color: "#60a5fa" },
-  { value: "anxious", label: "Anxious", emoji: "😰", color: "#a78bfa" },
-  { value: "calm", label: "Calm", emoji: "😌", color: "#34d399" },
-  { value: "excited", label: "Excited", emoji: "🤗", color: "#f87171" },
-  { value: "angry", label: "Angry", emoji: "😠", color: "#ef4444" },
-  { value: "grateful", label: "Grateful", emoji: "🙏", color: "#fbbf24" },
-  { value: "tired", label: "Tired", emoji: "😴", color: "#94a3b8" },
-  { value: "motivated", label: "Motivated", emoji: "💪", color: "#10b981" },
-  { value: "stressed", label: "Stressed", emoji: "😣", color: "#f97316" },
+  { value: "happy", label: "Happy", emoji: "😊" },
+  { value: "calm", label: "Calm", emoji: "😌" },
+  { value: "anxious", label: "Anxious", emoji: "😰" },
+  { value: "tired", label: "Tired", emoji: "😴" },
+  { value: "stressed", label: "Stressed", emoji: "😣" },
+  { value: "motivated", label: "Motivated", emoji: "💪" },
 ];
 
-export default function MoodPage() {
-  const { user } = useAuthStore();
-  
-  // --- useToast DIHAPUS, KITA PAKE DIRECT IMPORT toast DARI sonner ---
-  
-  const [selectedMood, setSelectedMood] = useState<MoodOption | null>(null);
-  const [selectedEmotion, setSelectedEmotion] = useState<typeof emotionOptions[0] | null>(null);
-  const [triggers, setTriggers] = useState<string[]>([]);
-  const [activities, setActivities] = useState<string[]>([]);
-  const [notes, setNotes] = useState("");
-  const [customTrigger, setCustomTrigger] = useState("");
-  const [customActivity, setCustomActivity] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [recentMoods, setRecentMoods] = useState<MoodEntry[]>([]);
-  const [showColorPalette, setShowColorPalette] = useState(false);
-  const [customColor, setCustomColor] = useState("#3b82f6");
+const commonTriggers = ["Work", "Social", "Sleep", "Health", "Food", "Weather", "Family", "Hobbies"];
 
-  const colorPalette = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899"];
+const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+  <Card className={cn(
+    "bg-white/40 dark:bg-black/10 backdrop-blur-2xl border border-white/20 shadow-md rounded-[28px] overflow-hidden transition-all duration-300",
+    className
+  )}>
+    {children}
+  </Card>
+);
+
+export default function MoodPage() {
+  const [selectedMood, setSelectedMood] = useState<typeof moodOptions[0] | null>(null);
+  const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
+  const [triggers, setTriggers] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [recentMoods, setRecentMoods] = useState<MoodEntry[]>([]);
 
   useEffect(() => {
-    fetchRecentMoods();
+    const fetchMoods = async () => {
+      setIsLoading(true);
+      await new Promise(r => setTimeout(r, 1000));
+      setRecentMoods([{
+        id: "1", mood: 4, emotion: "happy", emoji: "😊",
+        triggers: ["Work", "Food"], notes: "Progressing well on the new feature!", timestamp: new Date().toISOString()
+      }]);
+      setIsLoading(false);
+    };
+    fetchMoods();
   }, []);
 
-  const fetchRecentMoods = async () => {
-    const mockMoods: MoodEntry[] = [
-      {
-        id: "1",
-        mood: 4,
-        emotion: "happy",
-        color: "#22c55e",
-        emoji: "😊",
-        triggers: ["Exercise"],
-        activities: ["Music"],
-        notes: "Had a great day",
-        timestamp: new Date(),
-      },
-    ];
-    setRecentMoods(mockMoods);
-  };
-
-  const handleMoodSelect = (mood: MoodOption) => {
-    setSelectedMood(mood);
-    const emotionMap: { [key: number]: string } = { 1: "sad", 2: "sad", 3: "calm", 4: "happy", 5: "excited" };
-    const emotion = emotionOptions.find(e => e.value === emotionMap[mood.value]);
-    if (emotion) setSelectedEmotion(emotion);
-  };
-
-  const handleSubmitMood = async () => {
-    if (!selectedMood || !selectedEmotion) {
-      toast.error("Please select your mood and emotion"); // --- PAKE toast.error ---
-      return;
-    }
-
+  const handleSubmit = async () => {
+    if (!selectedMood) return toast.error("Pilih mood lu dulu bro");
     setIsSubmitting(true);
     try {
-      const newEntry: MoodEntry = {
+      await new Promise(r => setTimeout(r, 800));
+      const entry: MoodEntry = {
         id: Date.now().toString(),
         mood: selectedMood.value,
-        emotion: selectedEmotion.value,
-        color: selectedMood.color,
+        emotion: selectedEmotion || "neutral",
         emoji: selectedMood.emoji,
         triggers,
-        activities,
         notes,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString()
       };
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setRecentMoods([newEntry, ...recentMoods]);
-      
-      // Reset
+      setRecentMoods([entry, ...recentMoods]);
+      toast.success("Daily entry saved");
       setSelectedMood(null);
       setSelectedEmotion(null);
       setTriggers([]);
-      setActivities([]);
       setNotes("");
-
-      toast.success("Mood Recorded!"); // --- PAKE toast.success ---
-    } catch (error) {
-      toast.error("Failed to save mood entry");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleQuickMood = async (moodValue: number) => {
-    const mood = moodOptions.find(m => m.value === moodValue);
-    if (mood) {
-      setIsSubmitting(true);
-      try {
-        const newEntry: MoodEntry = {
-          id: Date.now().toString(),
-          mood: mood.value,
-          emotion: "neutral",
-          color: mood.color,
-          emoji: mood.emoji,
-          triggers: [],
-          activities: [],
-          notes: "",
-          timestamp: new Date(),
-        };
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setRecentMoods([newEntry, ...recentMoods]);
-        toast.success(`Feeling ${mood.label} recorded!`);
-      } catch (error) {
-        toast.error("Failed to save quick mood");
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
-  };
-
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Heart className="h-8 w-8 text-red-500" />
-            Mood Tracking
-          </h1>
-          <p className="text-muted-foreground">How are you feeling today?</p>
-        </div>
+    <div className="p-6 md:p-12 max-w-5xl space-y-10 text-left">
+      {/* Header - Stronger weight */}
+      <div className="space-y-2">
+        
+        <h1 className="text-4xl font-medium tracking-tight bg-gradient-to-r from-foreground to-foreground/50 bg-clip-text text-transparent">
+              Mood Journal
+            </h1>
+            <p className="text-foreground/60 font-medium italic mt-1">Check-in dengan dirimu sendiri hari ini.</p>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Zap className="h-5 w-5" /> Quick Check-in</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between gap-2">
-              {moodOptions.map((mood) => (
+      </div>
+
+      <Tabs defaultValue="add" className="w-full">
+        <TabsList className="flex justify-start bg-transparent h-auto p-0 mb-10 gap-8 border-none">
+          {["add", "history"].map((tab) => (
+            <TabsTrigger 
+              key={tab}
+              value={tab} 
+              className="p-0 text-base font-semibold bg-transparent border-none shadow-none data-[state=active]:text-[#D48C70] data-[state=active]:shadow-none relative after:absolute after:bottom-[-10px] after:left-0 after:w-0 data-[state=active]:after:w-full after:h-[3px] after:bg-[#D48C70] after:transition-all after:rounded-full"
+            >
+              {tab === "add" ? "New Journal" : "History Log"}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="add" className="mt-0 space-y-10 focus-visible:ring-0">
+          {/* Mood Selection - Larger Buttons */}
+          <div className="space-y-5">
+            <Label className="text-xs uppercase tracking-[0.2em] font-bold text-[#D48C70]">Current Vibe</Label>
+            <div className="flex flex-wrap gap-4">
+              {moodOptions.map((m) => (
                 <button
-                  key={mood.value}
-                  onClick={() => handleQuickMood(mood.value)}
-                  disabled={isSubmitting}
-                  className="flex flex-col items-center p-3 rounded-lg hover:bg-slate-50 transition-colors"
+                  key={m.value}
+                  onClick={() => setSelectedMood(m)}
+                  className={cn(
+                    "px-6 py-5 rounded-3xl border-2 transition-all flex items-center gap-4 min-w-[140px]",
+                    selectedMood?.value === m.value 
+                      ? "bg-[#D48C70]/10 border-[#D48C70] shadow-md" 
+                      : "bg-white/50 border-white/20 hover:border-[#D48C70]/30"
+                  )}
                 >
-                  <span className="text-3xl mb-1">{mood.emoji}</span>
-                  <span className="text-xs">{mood.label}</span>
+                  <span className="text-3xl">{m.emoji}</span>
+                  <span className={cn("text-sm font-bold", selectedMood?.value === m.value ? "text-[#D48C70]" : "text-foreground/60")}>
+                    {m.label}
+                  </span>
                 </button>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Tabs defaultValue="detailed" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="detailed">Detailed Entry</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-          </TabsList>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <GlassCard className="p-8 space-y-8">
+              {/* Emotion Selector - Bigger Grid */}
+              <div className="space-y-4">
+                <Label className="text-xs uppercase tracking-[0.2em] font-bold text-[#D48C70]">Specific Emotion</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {emotionOptions.map((e) => (
+                    <button
+                      key={e.value}
+                      onClick={() => setSelectedEmotion(e.value)}
+                      className={cn(
+                        "py-3 px-4 rounded-xl border text-xs font-semibold transition-all",
+                        selectedEmotion === e.value 
+                          ? "bg-[#D48C70] text-white border-[#D48C70] shadow-sm" 
+                          : "bg-white/20 border-white/10 hover:border-[#D48C70]/30"
+                      )}
+                    >
+                      {e.emoji} {e.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          <TabsContent value="detailed" className="space-y-6">
-            <Card>
-              <CardContent className="space-y-6 pt-6">
-                <div className="space-y-3">
-                  <Label>Mood</Label>
-                  <div className="grid grid-cols-5 gap-3">
-                    {moodOptions.map((mood) => (
-                      <button
-                        key={mood.value}
-                        onClick={() => handleMoodSelect(mood)}
-                        className={`p-4 rounded-xl border-2 transition-all ${selectedMood?.value === mood.value ? 'border-primary bg-primary/10' : 'border-gray-200'}`}
-                      >
-                        <div className="text-3xl mb-1">{mood.emoji}</div>
-                        <div className="text-xs font-medium">{mood.label}</div>
-                      </button>
+              {/* Triggers */}
+              <div className="space-y-4">
+                <Label className="text-xs uppercase tracking-[0.2em] font-bold text-[#D48C70]">What&apos;s the trigger?</Label>
+                <Select onValueChange={(val) => !triggers.includes(val) && setTriggers([...triggers, val])}>
+                  <SelectTrigger className="rounded-xl bg-white/30 border-white/20 text-sm h-12 focus:ring-[#D48C70]/20">
+                    <SelectValue placeholder="Select factors..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-white/10 backdrop-blur-3xl shadow-2xl">
+                    {commonTriggers.map(t => (
+                      <SelectItem key={t} value={t} className="text-sm py-3 focus:bg-[#D48C70] focus:text-white cursor-pointer">
+                        {t}
+                      </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {triggers.map(t => (
+                    <Badge key={t} className="bg-[#D48C70]/10 text-[#D48C70] border-none text-xs rounded-full py-1.5 px-4 font-semibold">
+                      {t} <X className="w-3.5 h-3.5 ml-2 cursor-pointer hover:text-rose-500" onClick={() => setTriggers(triggers.filter(x => x !== t))} />
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </GlassCard>
+
+            <div className="flex flex-col gap-8">
+              <div className="space-y-4 flex-1">
+                <Label className="text-xs uppercase tracking-[0.2em] font-bold text-[#D48C70]">Personal Notes</Label>
+                <div className="relative group">
+                  <Textarea 
+                    placeholder="Apa yang ada di pikiranmu hari ini?" 
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="bg-white/40 border-white/20 rounded-[24px] text-base p-6 min-h-[220px] focus:ring-[#D48C70]/20 focus:border-[#D48C70]/40 transition-all resize-none shadow-inner"
+                  />
+                  <MessageSquare className="absolute bottom-6 right-6 w-5 h-5 opacity-10 group-focus-within:opacity-30 transition-opacity" />
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleSubmit} 
+                disabled={isSubmitting || !selectedMood} 
+                className="w-full h-16 rounded-[24px] bg-[#D48C70] hover:bg-[#D48C70]/90 text-white text-lg font-bold shadow-xl shadow-[#D48C70]/20 transition-all active:scale-[0.97]"
+              >
+                {isSubmitting ? <LoadingSpinner size="md" /> : "Save Daily Log"}
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-0 space-y-6">
+          {isLoading ? (
+            Array(3).fill(0).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-3xl bg-white/20" />
+            ))
+          ) : (
+            <div className="grid gap-4">
+              {recentMoods.map(entry => (
+                <div key={entry.id} className="flex items-center gap-6 p-6 bg-white/40 border border-white/10 rounded-[28px] group hover:border-[#D48C70]/40 transition-all shadow-sm hover:shadow-md">
+                  <div className="w-16 h-16 flex items-center justify-center bg-white/60 rounded-[20px] text-4xl shadow-sm group-hover:scale-105 transition-transform">
+                    {entry.emoji}
                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Emotion</Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {emotionOptions.map((emotion) => (
-                      <button
-                        key={emotion.value}
-                        onClick={() => setSelectedEmotion(emotion)}
-                        className={`p-2 rounded-lg border text-xs ${selectedEmotion?.value === emotion.value ? 'border-primary bg-primary/10' : 'border-gray-200'}`}
-                      >
-                        {emotion.emoji} {emotion.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                    <Label>Triggers</Label>
-                    <Select onValueChange={(val) => setTriggers([...triggers, val])}>
-                        <SelectTrigger><SelectValue placeholder="Add trigger" /></SelectTrigger>
-                        <SelectContent>{commonTriggers.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <div className="flex flex-wrap gap-2">{triggers.map(t => <Badge key={t} variant="secondary">{t}</Badge>)}</div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Notes</Label>
-                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What's on your mind?" />
-                </div>
-
-                <Button onClick={handleSubmitMood} disabled={isSubmitting} className="w-full">
-                  {isSubmitting ? <LoadingSpinner size="sm" /> : "Save Mood"}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="history">
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                {recentMoods.map(entry => (
-                  <div key={entry.id} className="p-4 border rounded-lg flex items-center gap-4">
-                    <div className="text-3xl">{entry.emoji}</div>
-                    <div className="flex-1">
-                      <div className="font-bold">{entry.notes || "No notes"}</div>
-                      <div className="text-xs text-gray-500">{entry.timestamp.toLocaleString()}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Badge className="bg-[#D48C70] text-white hover:bg-[#D48C70] border-none px-3 py-0.5 text-[10px] uppercase font-bold">
+                        {entry.emotion}
+                      </Badge>
+                      <div className="flex items-center gap-1.5 opacity-40">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span className="text-xs font-semibold">
+                          {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                     </div>
-                    <Badge>{entry.emotion}</Badge>
+                    <p className="text-base font-semibold text-foreground/80 leading-snug">{entry.notes || "Quiet reflection logged."}</p>
+                    <div className="flex gap-2 mt-2">
+                       {entry.triggers.map(t => <span key={t} className="text-[11px] font-bold text-[#D48C70]/60 uppercase tracking-tighter">#{t}</span>)}
+                    </div>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </motion.div>
+                  <Button variant="ghost" size="icon" className="rounded-full opacity-20 group-hover:opacity-100 group-hover:bg-[#D48C70]/10 group-hover:text-[#D48C70] transition-all">
+                    <ChevronRight className="w-5 h-5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

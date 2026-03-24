@@ -175,10 +175,10 @@ export default function JournalPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Journal</h1>
-          <p className="text-muted-foreground">
-            Record your thoughts and feelings to track your mental health journey.
-          </p>
+          <h1 className="text-4xl font-medium tracking-tight bg-gradient-to-r from-foreground to-foreground/50 bg-clip-text text-transparent">
+              Journal
+            </h1>
+            <p className="text-foreground/60 font-medium italic mt-1">Record your thoughts and feelings to track your mental health journey.</p>
         </div>
         <Button asChild>
           <Link href="/journal/new">
