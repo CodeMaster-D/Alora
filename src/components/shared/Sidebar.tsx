@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ import {
   LogOut,
   Menu,
   X,
+  Loader2,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useAccessibilityStore } from "@/store/useAccessbilityStore";
@@ -44,7 +45,8 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const router = useRouter();
+  const { user, logout, isLoading } = useAuthStore();
   const { fontSize } = useAccessibilityStore();
   const { isCollapsed, toggleSidebar } = useSidebarStore();
 
@@ -55,6 +57,13 @@ export function Sidebar() {
     setShowTooltips(false);
     toggleSidebar();
     setTimeout(() => setShowTooltips(true), 400);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    // Paksa pindah ke landing page dan refresh state router
+    router.push("/");
+    router.refresh();
   };
 
   const getFontSizeClass = () => {
@@ -135,28 +144,9 @@ export function Sidebar() {
                         </Button>
                       </Link>
                     </TooltipTrigger>
-                    
                     {isCollapsed && (
-                      <TooltipContent 
-                        side="right" 
-                        sideOffset={15}
-                        className={cn(
-                          "px-4 py-2 text-xs font-semibold rounded-xl border border-white/30 dark:border-white/10",
-                          "bg-white/20 dark:bg-black/20 backdrop-blur-md text-foreground shadow-2xl overflow-visible"
-                        )}
-                      >
-                        <AnimatePresence mode="wait">
-                          {hoveredItem === item.name && (
-                            <motion.div
-                              initial={{ opacity: 0, x: -10, scale: 0.9 }}
-                              animate={{ opacity: 1, x: 0, scale: 1 }}
-                              exit={{ opacity: 0, x: -10, scale: 0.9 }}
-                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            >
-                              {item.name}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                      <TooltipContent side="right" sideOffset={15} className="bg-white/20 dark:bg-black/20 backdrop-blur-md border-white/30 rounded-xl px-4 py-2 text-xs font-semibold shadow-2xl">
+                        {item.name}
                       </TooltipContent>
                     )}
                   </Tooltip>
@@ -167,77 +157,46 @@ export function Sidebar() {
 
           {/* Profile Section */}
           <div className="p-3 mt-auto border-t border-white/10">
-            <Tooltip 
-              disableHoverableContent
-              open={isCollapsed && showTooltips && hoveredItem === 'profile'}
-              onOpenChange={(open) => isCollapsed && setHoveredItem(open ? 'profile' : null)}
-            >
-              <TooltipTrigger asChild>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className={cn("w-full rounded-2xl h-16 transition-all hover:bg-primary/5", isCollapsed ? "justify-center px-0" : "justify-start px-3")}>
-                      <div className="relative">
-                         <Avatar className="h-10 w-10 border-2 border-transparent group-hover:border-primary/20 transition-all shadow-md">
-                          <AvatarImage src={user?.photoURL} />
-                          <AvatarFallback className="bg-primary/10 text-primary">{user?.displayName?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 border-2 border-card rounded-full" />
-                      </div>
-                      {!isCollapsed && (
-                        <div className="ml-3 text-left overflow-hidden">
-                          <p className="text-sm font-normal truncate tracking-wide">{user?.displayName}</p>
-                          <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest text-primary">Member</p>
-                        </div>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="right" sideOffset={15} className="rounded-2xl backdrop-blur-xl bg-card/80 border-white/20 w-56 shadow-2xl border">
-                    <DropdownMenuItem onClick={logout} className="text-destructive rounded-xl m-1 font-medium focus:bg-destructive/10 cursor-pointer transition-colors">
-                      <LogOut className="mr-2 h-4 w-4" /> Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TooltipTrigger>
-              {isCollapsed && (
-                <TooltipContent 
-                  side="right" 
-                  sideOffset={15} 
-                  className={cn(
-                    "px-4 py-2 text-xs font-semibold rounded-xl border border-white/30 dark:border-white/10",
-                    "bg-white/20 dark:bg-black/20 backdrop-blur-md text-foreground shadow-2xl overflow-visible"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className={cn("w-full rounded-2xl h-16 transition-all hover:bg-primary/5", isCollapsed ? "justify-center px-0" : "justify-start px-3")}>
+                  <div className="relative">
+                    <Avatar className="h-10 w-10 border-2 border-transparent group-hover:border-primary/20 transition-all shadow-md">
+                      <AvatarImage src={user?.photoURL} />
+                      <AvatarFallback className="bg-primary/10 text-primary">{user?.displayName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 border-2 border-card rounded-full" />
+                  </div>
+                  {!isCollapsed && (
+                    <div className="ml-3 text-left overflow-hidden">
+                      <p className="text-sm font-normal truncate tracking-wide">{user?.displayName}</p>
+                      <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest text-primary">Member</p>
+                    </div>
                   )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" sideOffset={15} className="rounded-2xl backdrop-blur-xl bg-card/80 border-white/20 w-56 shadow-2xl border">
+                <DropdownMenuItem 
+                  onClick={handleLogout} 
+                  disabled={isLoading}
+                  className="text-destructive rounded-xl m-1 font-medium focus:bg-destructive/10 cursor-pointer transition-colors"
                 >
-                  <AnimatePresence mode="wait">
-                    {hoveredItem === 'profile' && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -10, scale: 0.9 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: -10, scale: 0.9 }}
-                      >
-                        Account Info
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </TooltipContent>
-              )}
-            </Tooltip>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
-      {/* MOBILE NAV - REDESIGNED (LEFT ALIGNED + STAGGER ANIMATION) */}
+      {/* MOBILE NAV */}
       <motion.nav 
         initial="hidden"
         animate="visible"
         variants={{
           hidden: { opacity: 0 },
-          visible: { 
-            opacity: 1,
-            transition: { 
-              staggerChildren: 0.1, // Jeda antar icon
-              delayChildren: 0.2 // Jeda sebelum mulai
-            } 
-          }
+          visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
         }}
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2"
       >
@@ -248,21 +207,15 @@ export function Sidebar() {
               <motion.div
                 key={item.name}
                 variants={{
-                  hidden: { opacity: 0, x: -20 }, // Muncul dari kiri
+                  hidden: { opacity: 0, x: -20 },
                   visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 20 } }
                 }}
               >
                 <Link href={item.href} className="relative flex flex-col items-center justify-center w-10 h-10">
                   {isActive && (
-                    <motion.div layoutId="activeTab" className="absolute inset-0 bg-primary rounded-full -z-10" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+                    <motion.div layoutId="activeTabMobile" className="absolute inset-0 bg-primary rounded-full -z-10" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
                   )}
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.9 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                  >
-                    <item.icon className={cn("h-5 w-5 transition-colors duration-200", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
-                  </motion.div>
+                  <item.icon className={cn("h-5 w-5 transition-colors duration-200", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
                 </Link>
               </motion.div>
             );

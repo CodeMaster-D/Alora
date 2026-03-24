@@ -1,7 +1,20 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { User } from "@/types";
-import { firebaseService } from ".././services/firebase";
+import { firebaseService } from "../services/firebase";
+
+// Helper untuk set dan hapus cookie (agar terbaca oleh Middleware)
+const setAuthCookie = (value: string) => {
+  if (typeof document !== 'undefined') {
+    document.cookie = `isAuthenticated=${value}; path=/; max-age=86400; SameSite=Lax`;
+  }
+};
+
+const removeAuthCookie = () => {
+  if (typeof document !== 'undefined') {
+    document.cookie = `isAuthenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  }
+};
 
 interface AuthState {
   user: User | null;
@@ -10,6 +23,7 @@ interface AuthState {
   
   // Actions
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<boolean>; 
   register: (email: string, password: string, displayName: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<boolean>;
@@ -36,6 +50,8 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true, 
               isLoading: false 
             });
+            // Set Cookie pas login sukses
+            setAuthCookie('true');
             return true;
           } else {
             set({ isLoading: false });
@@ -48,6 +64,47 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       
+      loginWithGoogle: async () => {
+        set({ isLoading: true });
+        
+        try {
+          // Simulasi delay untuk proses autentikasi
+          await new Promise(resolve => setTimeout(resolve, 1000)); 
+          
+          const dummyGoogleUser: User = {
+            id: "google-dummy-" + Date.now().toString(),
+            email: "user.dummy@gmail.com",
+            displayName: "Google User Dummy",
+            photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=GoogleDummy",
+            createdAt: new Date(),
+            lastLoginAt: new Date(),
+            preferences: {
+              theme: "system",
+              highContrast: false,
+              fontSize: "medium",
+              fontFamily: "default",
+              reducedMotion: false,
+              notifications: true,
+              reminderTime: "09:00"
+            }
+          };
+
+          set({ 
+            user: dummyGoogleUser, 
+            isAuthenticated: true, 
+            isLoading: false 
+          });
+          
+          // Set Cookie pas login Google sukses
+          setAuthCookie('true');
+          return true;
+        } catch (error) {
+          console.error("Google Login error:", error);
+          set({ isLoading: false });
+          return false;
+        }
+      },
+
       register: async (email: string, password: string, displayName: string) => {
         set({ isLoading: true });
         
@@ -65,6 +122,8 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true, 
               isLoading: false 
             });
+            // Set Cookie pas register sukses (langsung login)
+            setAuthCookie('true');
             return true;
           } else {
             set({ isLoading: false });
@@ -87,6 +146,8 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false, 
             isLoading: false 
           });
+          // Hapus Cookie pas logout
+          removeAuthCookie();
         } catch (error) {
           console.error("Logout error:", error);
           set({ isLoading: false });
@@ -162,12 +223,14 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true, 
               isLoading: false 
             });
+            setAuthCookie('true');
           } else {
             set({ 
               user: null, 
               isAuthenticated: false, 
               isLoading: false 
             });
+            removeAuthCookie();
           }
         } catch (error) {
           console.error("Check auth error:", error);
@@ -176,6 +239,7 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false, 
             isLoading: false 
           });
+          removeAuthCookie();
         }
       },
     }),
