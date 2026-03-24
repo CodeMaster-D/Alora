@@ -61,7 +61,6 @@ export function Sidebar() {
 
   const handleLogout = async () => {
     await logout();
-    // Paksa pindah ke landing page dan refresh state router
     router.push("/");
     router.refresh();
   };
@@ -144,9 +143,31 @@ export function Sidebar() {
                         </Button>
                       </Link>
                     </TooltipTrigger>
+                    
+                    {/* Tooltip Fix: Warna disesuaikan dengan Toolbar lo */}
                     {isCollapsed && (
-                      <TooltipContent side="right" sideOffset={15} className="bg-white/20 dark:bg-black/20 backdrop-blur-md border-white/30 rounded-xl px-4 py-2 text-xs font-semibold shadow-2xl">
-                        {item.name}
+                      <TooltipContent 
+                        side="right" 
+                        sideOffset={15} 
+                        className="p-0 border-none bg-transparent shadow-none"
+                      >
+                        <AnimatePresence>
+                          {hoveredItem === item.name && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10, scale: 0.95, filter: "blur(4px)" }}
+                              animate={{ opacity: 1, x: 0, scale: 1, filter: "blur(0px)" }}
+                              exit={{ opacity: 0, x: -5, scale: 0.95, filter: "blur(4px)" }}
+                              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                              className={cn(
+                                "relative z-50 bg-white/20 dark:bg-black/20 backdrop-blur-md",
+                                "border border-white/30 dark:border-white/10 rounded-xl px-4 py-2",
+                                "text-xs font-semibold shadow-2xl flex items-center gap-2"
+                              )}
+                            >
+                               <span className="tracking-wide">{item.name}</span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </TooltipContent>
                     )}
                   </Tooltip>
@@ -162,14 +183,14 @@ export function Sidebar() {
                 <Button variant="ghost" className={cn("w-full rounded-2xl h-16 transition-all hover:bg-primary/5", isCollapsed ? "justify-center px-0" : "justify-start px-3")}>
                   <div className="relative">
                     <Avatar className="h-10 w-10 border-2 border-transparent group-hover:border-primary/20 transition-all shadow-md">
-                      <AvatarImage src={user?.photoURL} />
-                      <AvatarFallback className="bg-primary/10 text-primary">{user?.displayName?.charAt(0)}</AvatarFallback>
+                      <AvatarImage src={user?.photoURL || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary">{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
                     </Avatar>
                     <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 border-2 border-card rounded-full" />
                   </div>
                   {!isCollapsed && (
                     <div className="ml-3 text-left overflow-hidden">
-                      <p className="text-sm font-normal truncate tracking-wide">{user?.displayName}</p>
+                      <p className="text-sm font-normal truncate tracking-wide">{user?.displayName || "Guest"}</p>
                       <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest text-primary">Member</p>
                     </div>
                   )}

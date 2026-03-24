@@ -1,16 +1,22 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Wind, Info, CheckCircle2 } from "lucide-react";
+import { Play, Pause, RotateCcw, Wind, Info, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { BreathingExercise } from "@/types";
 import { firebaseService } from "@/services/firebase";
-import { useAccessibilityStore } from "../../store/useAccessbilityStore";
+import { useAccessibilityStore } from "@/store/useAccessbilityStore";
 import { cn } from "@/lib/utils";
 
-// --- Custom Glass Component ---
+// Extend global window for older Safari support without 'any'
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+  }
+}
+
 const GlassPanel = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
   <div className={cn(
     "bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-sm rounded-[32px] overflow-hidden",
@@ -20,7 +26,11 @@ const GlassPanel = ({ children, className = "" }: { children: React.ReactNode; c
   </div>
 );
 
-export default function BreathePage() {
+interface BreatheProps {
+  isDemo?: boolean;
+}
+
+export default function BreathePage({ isDemo = false }: BreatheProps) {
   const { reducedMotion } = useAccessibilityStore();
   const [exercises, setExercises] = useState<BreathingExercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<BreathingExercise | null>(null);
@@ -34,15 +44,62 @@ export default function BreathePage() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
+  // --- 1. Helper Functions (Dideklarasikan di awal agar tidak ada error akses) ---
+  
+  const playSound = useCallback((frequency: number) => {
+    const ctx = audioContextRef.current;
+    if (!isSoundEnabled || !ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+  }, [isSoundEnabled]);
+
+  const handleFinishSession = useCallback(() => {
+    setIsRunning(false);
+    setIsCompleted(true);
+    playSound(659);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    if (!isDemo) {
+      // Logic simpan ke DB
+      console.log("Saving session to database...");
+    }
+  }, [isDemo, playSound]);
+
+  const handleReset = useCallback(() => {
+    setIsRunning(false);
+    setIsCompleted(false);
+    setCurrentPhase("inhale");
+    setCurrentCycle(0);
+    if (selectedExercise) setPhaseTimeLeft(selectedExercise.inhaleTime);
+  }, [selectedExercise]);
+
+  const handleStart = () => {
+    if (!selectedExercise) return;
+    setIsRunning(true);
+    setIsCompleted(false);
+  };
+
+  // --- 2. Effects ---
+
+  // Fetch Data
   useEffect(() => {
     const fetchExercises = async () => {
       try {
         const response = await firebaseService.breathing.getBreathingExercises();
         if (response.success && response.data) {
-          setExercises(response.data);
-          if (response.data.length > 0) {
-            setSelectedExercise(response.data[0]);
-            setPhaseTimeLeft(response.data[0].inhaleTime);
+          const data = response.data; // Response data sudah bertipe BreathingExercise[] dari service
+          setExercises(data);
+          if (data.length > 0) {
+            setSelectedExercise(data[0]);
+            setPhaseTimeLeft(data[0].inhaleTime);
           }
         }
       } catch (error) {
@@ -52,9 +109,10 @@ export default function BreathePage() {
     fetchExercises();
   }, []);
 
+  // Audio Context Setup (Strictly No Any)
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (AudioContextClass && !audioContextRef.current) {
         audioContextRef.current = new AudioContextClass();
       }
@@ -68,82 +126,55 @@ export default function BreathePage() {
     };
   }, []);
 
+  // Main Logic Loop
   useEffect(() => {
     if (isRunning && selectedExercise) {
-      let phase: "inhale" | "hold" | "exhale" = currentPhase;
-      let timeLeft = phaseTimeLeft;
-      let cycle = currentCycle;
-
       intervalRef.current = setInterval(() => {
-        timeLeft--;
-        setPhaseTimeLeft(timeLeft);
+        setPhaseTimeLeft((prevTime) => {
+          if (prevTime > 1) return prevTime - 1;
 
-        if (timeLeft <= 0) {
-          if (phase === "inhale") {
-            phase = "hold";
-            timeLeft = selectedExercise.holdTime;
+          // Logic ganti fase menggunakan nilai state saat ini
+          let nextPhase: "inhale" | "hold" | "exhale" = "inhale";
+          let nextTime = 0;
+
+          if (currentPhase === "inhale") {
+            nextPhase = "hold";
+            nextTime = selectedExercise.holdTime;
             playSound(440);
-          } else if (phase === "hold") {
-            phase = "exhale";
-            timeLeft = selectedExercise.exhaleTime;
+          } else if (currentPhase === "hold") {
+            nextPhase = "exhale";
+            nextTime = selectedExercise.exhaleTime;
             playSound(523);
-          } else if (phase === "exhale") {
-            cycle++;
-            setCurrentCycle(cycle);
-            if (cycle >= selectedExercise.cycles) {
-              setIsRunning(false);
-              setIsCompleted(true);
-              playSound(659);
-              if (intervalRef.current) clearInterval(intervalRef.current);
-              return;
-            } else {
-              phase = "inhale";
-              timeLeft = selectedExercise.inhaleTime;
-              playSound(349);
+          } else if (currentPhase === "exhale") {
+            const nextCycleCount = currentCycle + 1;
+            if (nextCycleCount >= selectedExercise.cycles) {
+              handleFinishSession();
+              return 0;
             }
+            nextPhase = "inhale";
+            nextTime = selectedExercise.inhaleTime;
+            setCurrentCycle(nextCycleCount);
+            playSound(349);
           }
-          setCurrentPhase(phase);
-        }
+
+          setCurrentPhase(nextPhase);
+          return nextTime;
+        });
       }, 1000);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isRunning, selectedExercise, isSoundEnabled]);
+  }, [isRunning, selectedExercise, currentPhase, currentCycle, playSound, handleFinishSession]);
 
-  const playSound = (frequency: number) => {
-    const ctx = audioContextRef.current;
-    if (!isSoundEnabled || !ctx) return;
-    if (ctx.state === 'suspended') ctx.resume();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
-  };
-
-  const handleStart = () => {
-    if (!selectedExercise) return;
-    setIsRunning(true);
-    setIsCompleted(false);
-  };
-
-  const handleReset = () => {
-    setIsRunning(false);
-    setIsCompleted(false);
-    setCurrentPhase("inhale");
-    setCurrentCycle(0);
-    if (selectedExercise) setPhaseTimeLeft(selectedExercise.inhaleTime);
-  };
-
+  // Animation variants
   const getAnimationVariants = (): Variants => {
     if (reducedMotion) return { initial: { scale: 1 }, animate: { scale: 1 } };
-    const duration = currentPhase === "hold" ? 0.5 : (currentPhase === "inhale" ? selectedExercise?.inhaleTime : selectedExercise?.exhaleTime) || 4;
+    const inhaleDuration = selectedExercise?.inhaleTime || 4;
+    const exhaleDuration = selectedExercise?.exhaleTime || 4;
+    const duration = currentPhase === "hold" ? 0.5 : (currentPhase === "inhale" ? inhaleDuration : exhaleDuration);
+    
     return {
       initial: { scale: 0.9, opacity: 0.5 },
       animate: { 
@@ -155,9 +186,12 @@ export default function BreathePage() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl min-h-[90vh] flex flex-col gap-8 relative">
+    <div className={cn(
+      "container mx-auto p-6 max-w-7xl flex flex-col gap-8 relative",
+      !isDemo && "min-h-[90vh]"
+    )}>
       
-      {/* SUCCESS OVERLAY - Ini update utamanya bro */}
+      {/* SUCCESS OVERLAY */}
       <AnimatePresence>
         {isCompleted && (
           <motion.div 
@@ -166,11 +200,7 @@ export default function BreathePage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/40 backdrop-blur-md"
           >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="max-w-md w-full"
-            >
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="max-w-md w-full">
               <GlassPanel className="p-10 text-center space-y-6 border-emerald-500/30 shadow-2xl shadow-emerald-500/10">
                 <div className="flex justify-center">
                   <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
@@ -179,15 +209,17 @@ export default function BreathePage() {
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-3xl font-bold tracking-tight">Well done!</h2>
-                  <p className="text-foreground/60 leading-relaxed text-lg">
-                    You have completed your ritual. You are now more centered, calm, and ready.
+                  <p className="text-foreground/60 leading-relaxed text-lg text-foreground">
+                    {isDemo 
+                      ? "You've experienced a glimpse of Alora. Imagine tracking this daily to improve your focus." 
+                      : "You have completed your ritual. You are now more centered, calm, and ready."}
                   </p>
                 </div>
                 <Button 
                   onClick={handleReset}
                   className="w-full h-14 rounded-2xl bg-foreground text-background text-lg font-semibold hover:scale-[1.02] transition-transform"
                 >
-                  Return to Dashboard
+                  {isDemo ? "Try Another Ritual" : "Return to Dashboard"}
                 </Button>
               </GlassPanel>
             </motion.div>
@@ -195,26 +227,28 @@ export default function BreathePage() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-medium tracking-tight bg-gradient-to-r from-foreground to-foreground/40 bg-clip-text text-transparent italic">
-            Quiet the Mind
-          </h1>
-          <p className="text-foreground/50 font-medium text-sm">Controlled breathing for digital wellness.</p>
-        </div>
-        
-        <div className="flex items-center gap-3 p-1.5 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-          <div className="flex items-center gap-2 px-3">
-             <span className="text-[10px] uppercase tracking-widest font-bold opacity-40">Audio</span>
-             <Switch checked={isSoundEnabled} onCheckedChange={setIsSoundEnabled} className="scale-75" />
+      {/* UI HEADER */}
+      {!isDemo && (
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-medium tracking-tight bg-gradient-to-r from-foreground to-foreground/40 bg-clip-text text-transparent italic">
+              Quiet the Mind
+            </h1>
+            <p className="text-foreground/50 font-medium text-sm">Controlled breathing for digital wellness.</p>
+          </div>
+          <div className="flex items-center gap-3 p-1.5 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+            <div className="flex items-center gap-2 px-3">
+               <span className="text-[10px] uppercase tracking-widest font-bold opacity-40 text-foreground">Audio</span>
+               <Switch checked={isSoundEnabled} onCheckedChange={setIsSoundEnabled} className="scale-75" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
+      {/* MAIN CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-8">
-          <GlassPanel className="h-[600px] relative flex flex-col items-center justify-center">
+          <GlassPanel className={cn("relative flex flex-col items-center justify-center", isDemo ? "h-[500px]" : "h-[600px]")}>
             {selectedExercise ? (
               <>
                 <div className="relative flex items-center justify-center">
@@ -258,7 +292,7 @@ export default function BreathePage() {
                     </Button>
                   </div>
                   {selectedExercise.cycles > 1 && (
-                    <div className="px-4 py-1.5 rounded-full bg-foreground/5 text-[11px] font-bold uppercase tracking-widest opacity-60">
+                    <div className="px-4 py-1.5 rounded-full bg-foreground/5 text-[11px] font-bold uppercase tracking-widest opacity-60 text-foreground">
                       Cycle {currentCycle + 1} of {selectedExercise.cycles}
                     </div>
                   )}
@@ -273,10 +307,9 @@ export default function BreathePage() {
           </GlassPanel>
         </div>
 
-        {/* Sidebar Rituals */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           <GlassPanel className="p-6">
-            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-40 mb-6">Breathing Rituals</h3>
+            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-40 mb-6 text-foreground">Breathing Rituals</h3>
             <div className="space-y-3">
               {exercises.map((ex) => (
                 <button
@@ -286,7 +319,7 @@ export default function BreathePage() {
                     "w-full p-4 rounded-2xl text-left transition-all flex items-center gap-4 group",
                     selectedExercise?.id === ex.id 
                       ? "bg-foreground text-background shadow-lg shadow-foreground/10" 
-                      : "hover:bg-foreground/5 bg-transparent border border-transparent"
+                      : "hover:bg-foreground/5 bg-transparent border border-transparent text-foreground"
                   )}
                 >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/10" style={{ backgroundColor: ex.color }}>
@@ -311,8 +344,8 @@ export default function BreathePage() {
                 <Info className="h-4 w-4" />
               </div>
               <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-widest opacity-70">Pro Tip</h4>
-                <p className="text-sm leading-relaxed text-foreground/70 italic">
+                <h4 className="text-xs font-bold uppercase tracking-widest opacity-70 text-foreground">Pro Tip</h4>
+                <p className="text-sm leading-relaxed text-foreground/70 italic text-foreground">
                   &quot;Focus on your diaphragm. Let your belly expand on inhale and contract on exhale.&quot;
                 </p>
               </div>
