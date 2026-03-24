@@ -92,7 +92,7 @@ export function Navbar() {
         className={cn(
           "mx-auto max-w-7xl h-16 transition-all duration-500 pointer-events-auto",
           "flex items-center justify-between px-6 rounded-[2rem]",
-          "border shadow-2xl",
+          "",
           isScrolled 
             ? "bg-card/60 backdrop-blur-xl border-white/20 dark:border-white/10" 
             : "bg-card/30 backdrop-blur-xl border-white/10 dark:border-white/5"
@@ -156,7 +156,7 @@ export function Navbar() {
                 <Link href="/auth/login">Sign In</Link>
               </Button>
               <Button asChild className="h-10 rounded-2xl px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all group">
-                <Link href="/auth/register">
+                <Link href="/auth/login">
                   Join Alora
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
