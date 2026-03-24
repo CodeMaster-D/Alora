@@ -1,6 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useRef, useEffect } from "react";
+import { 
+  motion, 
+  useMotionValue, 
+  useSpring, 
+  useTransform, 
+  animate 
+} from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Wind, Zap, Heart } from "lucide-react";
 import Link from "next/link";
@@ -15,6 +22,20 @@ const data = [
 ];
 
 const COLORS = ["#7EA385", "#94B49B", "#B4CFB0"]; 
+
+// Komponen Counter khusus buat angka yang jalan
+function CounterUp({ target, duration = 3 }: { target: number; duration?: number }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => Math.round(latest));
+
+  useEffect(() => {
+    // Jalankan animasi dari 0 ke target
+    const controls = animate(count, target, { duration: duration, ease: "easeOut" });
+    return controls.stop;
+  }, [count, target, duration]);
+
+  return <motion.span>{rounded}</motion.span>;
+}
 
 export function Hero() {
   return (
@@ -32,7 +53,7 @@ export function Hero() {
             transition={{ duration: 0.8 }}
             className="text-left space-y-10 z-20"
           >
-            <h1 className="text-6xl md:text-8xl font-medium tracking-tight leading-[1.05]">
+            <h1 className="text-6xl md:text-8xl font-medium tracking-tight leading-[1.05] text-foreground">
               Find Your <br />
               <span className="text-primary italic font-serif">Balance</span> <br />
               With Alora
@@ -56,8 +77,8 @@ export function Hero() {
                     <Zap className="h-5 w-5" />
                 </div>
                 <div className="text-left">
-                    <p className="text-[10px] uppercase opacity-40 font-bold tracking-widest leading-none mb-1 text-foreground">Status</p>
-                    <p className="text-sm font-semibold text-foreground">Live Ritual</p>
+                    <p className="text-[10px] uppercase opacity-40 font-bold tracking-widest leading-none mb-1">Status</p>
+                    <p className="text-sm font-semibold">Live Ritual</p>
                 </div>
               </div>
             </div>
@@ -66,14 +87,13 @@ export function Hero() {
           {/* RIGHT CONTENT */}
           <div className="relative h-[600px] lg:h-[750px] w-full flex items-center justify-center lg:justify-end">
             
-            {/* MAIN IMAGE ASSET - NAIK KE ATAS & ROUNDED KANAN */}
+            {/* MAIN IMAGE ASSET */}
             <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1.2 }}
                 className="absolute inset-0 z-0 flex items-center justify-center lg:justify-end"
             >
-                {/* lg:-translate-y-10 buat narik gambar ke atas */}
                 <div className="relative w-full h-[90%] lg:w-[110%] lg:translate-x-10 lg:-translate-y-10 overflow-hidden rounded-r-[4rem]">
                     <Image 
                         src="/assets/hero4.png" 
@@ -85,11 +105,11 @@ export function Hero() {
                 </div>
             </motion.div>
 
-            {/* DETAILING - WHITE GLASSMORPHISM (TEXT BLACK, NO SHADOW) */}
+            {/* DETAILING - WHITE GLASSMORPHISM WITH COUNTER */}
             <div className="absolute top-10 right-0 lg:right-[-2%] z-30 flex flex-col gap-5">
                 {[
                     { icon: Wind, label: "Flow State", val: "Deep Focus", color: "text-emerald-600", bg: "bg-emerald-500/10" },
-                    { icon: Heart, label: "Heart Rate", val: "72 BPM", color: "text-rose-600", bg: "bg-rose-500/10" }
+                    { icon: Heart, label: "Heart Rate", val: 72, suffix: " BPM", color: "text-rose-600", bg: "bg-rose-500/10" }
                 ].map((item, i) => (
                     <motion.div 
                         key={i}
@@ -103,13 +123,19 @@ export function Hero() {
                         </div>
                         <div>
                             <p className="text-[10px] uppercase opacity-60 font-bold leading-none mb-1 text-black">{item.label}</p>
-                            <p className="text-sm font-normal text-black">{item.val}</p>
+                            <p className="text-sm font-semibold text-black">
+                              {typeof item.val === 'number' ? (
+                                <><CounterUp target={item.val} />{item.suffix}</>
+                              ) : (
+                                item.val
+                              )}
+                            </p>
                         </div>
                     </motion.div>
                 ))}
             </div>
 
-            {/* DONUT CHART - WHITE GLASSMORPHISM (TEXT BLACK, NO SHADOW) */}
+            {/* DONUT CHART - WHITE GLASSMORPHISM WITH COUNTER */}
             <motion.div 
                 initial={{ scale: 0.8, opacity: 0, x: 20 }}
                 animate={{ scale: 1, opacity: 1, x: 0 }}
@@ -139,7 +165,9 @@ export function Hero() {
                     </ResponsiveContainer>
                     
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl font-bold tracking-tighter text-black">100</span>
+                        <span className="text-4xl font-bold tracking-tighter text-black">
+                          <CounterUp target={100} duration={2.5} />
+                        </span>
                         <span className="text-[9px] uppercase tracking-widest opacity-60 font-bold text-black">Zen Score</span>
                     </div>
                 </div>
