@@ -85,7 +85,7 @@ export default function MoodPage() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!selectedMood) return toast.error("Pilih mood lu dulu bro");
+    if (!selectedMood) return toast.error("Please select your mood first");
     setIsSubmitting(true);
     try {
       await new Promise(r => setTimeout(r, 800));
@@ -104,6 +104,8 @@ export default function MoodPage() {
       setSelectedEmotion(null);
       setTriggers([]);
       setNotes("");
+    } catch (err) {
+      toast.error("Failed to save entry, please try again");
     } finally {
       setIsSubmitting(false);
     }
@@ -111,31 +113,32 @@ export default function MoodPage() {
 
   return (
     <div className="p-6 md:p-12 max-w-5xl space-y-10 text-left">
-      {/* Header - Stronger weight */}
+      {/* Header */}
       <div className="space-y-2">
-        
         <h1 className="text-4xl font-medium tracking-tight bg-gradient-to-r from-foreground to-foreground/50 bg-clip-text text-transparent">
-              Mood Journal
-            </h1>
-            <p className="text-foreground/60 font-medium italic mt-1">Check-in dengan dirimu sendiri hari ini.</p>
-
+          Mood Journal
+        </h1>
+        <p className="text-foreground/60 font-medium italic mt-1">Check-in with yourself today.</p>
       </div>
 
       <Tabs defaultValue="add" className="w-full">
         <TabsList className="flex justify-start bg-transparent h-auto p-0 mb-10 gap-8 border-none">
-          {["add", "history"].map((tab) => (
-            <TabsTrigger 
-              key={tab}
-              value={tab} 
-              className="p-0 text-base font-semibold bg-transparent border-none shadow-none data-[state=active]:text-[#D48C70] data-[state=active]:shadow-none relative after:absolute after:bottom-[-10px] after:left-0 after:w-0 data-[state=active]:after:w-full after:h-[3px] after:bg-[#D48C70] after:transition-all after:rounded-full"
-            >
-              {tab === "add" ? "New Journal" : "History Log"}
-            </TabsTrigger>
-          ))}
+          <TabsTrigger 
+            value="add" 
+            className="p-0 text-base font-semibold bg-transparent border-none shadow-none data-[state=active]:text-[#D48C70] data-[state=active]:shadow-none relative after:absolute after:bottom-[-10px] after:left-0 after:w-0 data-[state=active]:after:w-full after:h-[3px] after:bg-[#D48C70] after:transition-all after:rounded-full"
+          >
+            New Journal
+          </TabsTrigger>
+          <TabsTrigger 
+            value="history" 
+            className="p-0 text-base font-semibold bg-transparent border-none shadow-none data-[state=active]:text-[#D48C70] data-[state=active]:shadow-none relative after:absolute after:bottom-[-10px] after:left-0 after:w-0 data-[state=active]:after:w-full after:h-[3px] after:bg-[#D48C70] after:transition-all after:rounded-full"
+          >
+            History Log
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="add" className="mt-0 space-y-10 focus-visible:ring-0">
-          {/* Mood Selection - Larger Buttons */}
+          {/* Mood Selection */}
           <div className="space-y-5">
             <Label className="text-xs uppercase tracking-[0.2em] font-bold text-[#D48C70]">Current Vibe</Label>
             <div className="flex flex-wrap gap-4">
@@ -161,7 +164,7 @@ export default function MoodPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <GlassCard className="p-8 space-y-8">
-              {/* Emotion Selector - Bigger Grid */}
+              {/* Emotion Selector */}
               <div className="space-y-4">
                 <Label className="text-xs uppercase tracking-[0.2em] font-bold text-[#D48C70]">Specific Emotion</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -212,7 +215,7 @@ export default function MoodPage() {
                 <Label className="text-xs uppercase tracking-[0.2em] font-bold text-[#D48C70]">Personal Notes</Label>
                 <div className="relative group">
                   <Textarea 
-                    placeholder="Apa yang ada di pikiranmu hari ini?" 
+                    placeholder="What's on your mind today?" 
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     className="bg-white/40 border-white/20 rounded-[24px] text-base p-6 min-h-[220px] focus:ring-[#D48C70]/20 focus:border-[#D48C70]/40 transition-all resize-none shadow-inner"
@@ -239,33 +242,37 @@ export default function MoodPage() {
             ))
           ) : (
             <div className="grid gap-4">
-              {recentMoods.map(entry => (
-                <div key={entry.id} className="flex items-center gap-6 p-6 bg-white/40 border border-white/10 rounded-[28px] group hover:border-[#D48C70]/40 transition-all shadow-sm hover:shadow-md">
-                  <div className="w-16 h-16 flex items-center justify-center bg-white/60 rounded-[20px] text-4xl shadow-sm group-hover:scale-105 transition-transform">
-                    {entry.emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge className="bg-[#D48C70] text-white hover:bg-[#D48C70] border-none px-3 py-0.5 text-[10px] uppercase font-bold">
-                        {entry.emotion}
-                      </Badge>
-                      <div className="flex items-center gap-1.5 opacity-40">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span className="text-xs font-semibold">
-                          {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+              {recentMoods.length === 0 ? (
+                <div className="text-center py-20 opacity-30 italic font-medium">No history found for today.</div>
+              ) : (
+                recentMoods.map(entry => (
+                  <div key={entry.id} className="flex items-center gap-6 p-6 bg-white/40 border border-white/10 rounded-[28px] group hover:border-[#D48C70]/40 transition-all shadow-sm hover:shadow-md">
+                    <div className="w-16 h-16 flex items-center justify-center bg-white/60 rounded-[20px] text-4xl shadow-sm group-hover:scale-105 transition-transform">
+                      {entry.emoji}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Badge className="bg-[#D48C70] text-white hover:bg-[#D48C70] border-none px-3 py-0.5 text-[10px] uppercase font-bold">
+                          {entry.emotion}
+                        </Badge>
+                        <div className="flex items-center gap-1.5 opacity-40">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span className="text-xs font-semibold">
+                            {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-base font-semibold text-foreground/80 leading-snug">{entry.notes || "Quiet reflection logged."}</p>
+                      <div className="flex gap-2 mt-2">
+                         {entry.triggers.map(t => <span key={t} className="text-[11px] font-bold text-[#D48C70]/60 uppercase tracking-tighter">#{t}</span>)}
                       </div>
                     </div>
-                    <p className="text-base font-semibold text-foreground/80 leading-snug">{entry.notes || "Quiet reflection logged."}</p>
-                    <div className="flex gap-2 mt-2">
-                       {entry.triggers.map(t => <span key={t} className="text-[11px] font-bold text-[#D48C70]/60 uppercase tracking-tighter">#{t}</span>)}
-                    </div>
+                    <Button variant="ghost" size="icon" className="rounded-full opacity-20 group-hover:opacity-100 group-hover:bg-[#D48C70]/10 group-hover:text-[#D48C70] transition-all">
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" className="rounded-full opacity-20 group-hover:opacity-100 group-hover:bg-[#D48C70]/10 group-hover:text-[#D48C70] transition-all">
-                    <ChevronRight className="w-5 h-5" />
-                  </Button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
         </TabsContent>
