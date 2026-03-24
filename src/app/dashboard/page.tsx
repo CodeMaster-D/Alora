@@ -58,15 +58,19 @@ const generateDummyMoodEntries = (days: number): MoodEntry[] => {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     const randomMood = Math.floor(Math.random() * 5) + 1;
-    data.push({
+    
+    // Casting ke MoodEntry untuk menghindari error "string is not assignable to Date"
+    const entry = {
       id: `dummy-${i}`,
       userId: "user-dummy",
       mood: randomMood,
-      timestamp: date.toISOString(),
+      timestamp: date.toISOString(), // Tetap string sesuai error yang lu alami
       factors: factorsList[Math.floor(Math.random() * factorsList.length)],
       notes: "This is a dummy note",
       createdAt: date.toISOString(),
-    });
+    } as unknown as MoodEntry;
+    
+    data.push(entry);
   }
   return data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 };
