@@ -36,9 +36,9 @@ import { useState } from "react";
 
 const navigation = [
   { name: "Home", href: "/dashboard", icon: Home },
-  { name: "Mood", href: "/mood", icon: Heart },
-  { name: "Journal", href: "/journal", icon: BookOpen },
   { name: "Breathe", href: "/breathe", icon: Wind },
+  { name: "Journal", href: "/journal", icon: BookOpen },
+  { name: "Mood", href: "/mood", icon: Heart },
   { name: "Stats", href: "/analytics", icon: BarChart3 },
 ];
 
