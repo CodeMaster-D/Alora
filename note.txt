@@ -7,3 +7,4 @@ crausell otomatis di bagian core feature
 buat akun juri
 perbaiki navbar ketika di scroll dia ga ngikut
 tambahkan scroll ke atas
+buat footer
