@@ -1,26 +1,36 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, Variants } from "framer-motion"; // Tambah Variants di sini
-import { Play, Pause, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { motion, AnimatePresence, Variants } from "framer-motion";
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Wind, Info, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { BreathingExercise } from "@/types";
 import { firebaseService } from "@/services/firebase";
 import { useAccessibilityStore } from "../../store/useAccessbilityStore";
 import { cn } from "@/lib/utils";
 
+// --- Custom Glass Component ---
+const GlassPanel = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={cn(
+    "bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-sm rounded-[32px] overflow-hidden",
+    className
+  )}>
+    {children}
+  </div>
+);
+
 export default function BreathePage() {
   const { reducedMotion } = useAccessibilityStore();
   const [exercises, setExercises] = useState<BreathingExercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<BreathingExercise | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
   const [currentPhase, setCurrentPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
-  const [currentCycle, setCurrentCycle] = useState(0);
-  const [phaseTimeLeft, setPhaseTimeLeft] = useState(0);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
+  const [currentCycle, setCurrentCycle] = useState<number>(0);
+  const [phaseTimeLeft, setPhaseTimeLeft] = useState<number>(0);
+  const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(false);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -32,35 +42,37 @@ export default function BreathePage() {
           setExercises(response.data);
           if (response.data.length > 0) {
             setSelectedExercise(response.data[0]);
+            setPhaseTimeLeft(response.data[0].inhaleTime);
           }
         }
       } catch (error) {
-        console.error("Error fetching breathing exercises:", error);
+        console.error("Error fetching exercises:", error);
       }
     };
     fetchExercises();
   }, []);
 
   useEffect(() => {
-    // FIX: Cara inisialisasi AudioContext yang lebih bersih untuk TS
     if (typeof window !== "undefined") {
       const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioContextClass) {
+      if (AudioContextClass && !audioContextRef.current) {
         audioContextRef.current = new AudioContextClass();
       }
     }
-
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      if (audioContextRef.current) audioContextRef.current.close();
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
     };
   }, []);
 
   useEffect(() => {
     if (isRunning && selectedExercise) {
-      let phase: "inhale" | "hold" | "exhale" = "inhale";
-      let timeLeft = selectedExercise.inhaleTime;
-      let cycle = 0;
+      let phase: "inhale" | "hold" | "exhale" = currentPhase;
+      let timeLeft = phaseTimeLeft;
+      let cycle = currentCycle;
 
       intervalRef.current = setInterval(() => {
         timeLeft--;
@@ -78,12 +90,12 @@ export default function BreathePage() {
           } else if (phase === "exhale") {
             cycle++;
             setCurrentCycle(cycle);
-
             if (cycle >= selectedExercise.cycles) {
               setIsRunning(false);
               setIsCompleted(true);
               playSound(659);
               if (intervalRef.current) clearInterval(intervalRef.current);
+              return;
             } else {
               phase = "inhale";
               timeLeft = selectedExercise.inhaleTime;
@@ -96,36 +108,30 @@ export default function BreathePage() {
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning, selectedExercise, isSoundEnabled]);
 
   const playSound = (frequency: number) => {
-    if (!isSoundEnabled || !audioContextRef.current) return;
-    const oscillator = audioContextRef.current.createOscillator();
-    const gainNode = audioContextRef.current.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContextRef.current.destination);
-    oscillator.frequency.value = frequency;
-    oscillator.type = "sine";
-    gainNode.gain.setValueAtTime(0.3, audioContextRef.current.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContextRef.current.currentTime + 0.5);
-    oscillator.start(audioContextRef.current.currentTime);
-    oscillator.stop(audioContextRef.current.currentTime + 0.5);
+    const ctx = audioContextRef.current;
+    if (!isSoundEnabled || !ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
   };
 
   const handleStart = () => {
     if (!selectedExercise) return;
     setIsRunning(true);
     setIsCompleted(false);
-    setCurrentPhase("inhale");
-    setCurrentCycle(0);
-    setPhaseTimeLeft(selectedExercise.inhaleTime);
   };
-
-  const handlePause = () => setIsRunning(false);
 
   const handleReset = () => {
     setIsRunning(false);
@@ -135,174 +141,183 @@ export default function BreathePage() {
     if (selectedExercise) setPhaseTimeLeft(selectedExercise.inhaleTime);
   };
 
-  const handleSelectExercise = (exercise: BreathingExercise) => {
-    setSelectedExercise(exercise);
-    handleReset();
-  };
-
-  const getPhaseText = () => {
-    switch (currentPhase) {
-      case "inhale": return "Inhale";
-      case "hold": return "Hold";
-      case "exhale": return "Exhale";
-      default: return "";
-    }
-  };
-
-  const getAnimationDuration = () => {
-    if (!selectedExercise) return 4;
-    switch (currentPhase) {
-      case "inhale": return selectedExercise.inhaleTime;
-      case "hold": return 0.5;
-      case "exhale": return selectedExercise.exhaleTime;
-      default: return 4;
-    }
-  };
-
-  // FIX: Tambahkan tipe kembalian : Variants supaya motion.div tidak error
   const getAnimationVariants = (): Variants => {
-    if (reducedMotion) {
-      return {
-        initial: { scale: 1 },
-        animate: { scale: 1 },
-      };
-    }
-
+    if (reducedMotion) return { initial: { scale: 1 }, animate: { scale: 1 } };
+    const duration = currentPhase === "hold" ? 0.5 : (currentPhase === "inhale" ? selectedExercise?.inhaleTime : selectedExercise?.exhaleTime) || 4;
     return {
-      initial: { scale: 0.8 },
+      initial: { scale: 0.9, opacity: 0.5 },
       animate: { 
-        scale: currentPhase === "inhale" ? 1.3 : currentPhase === "hold" ? 1.3 : 0.8,
-        transition: { duration: getAnimationDuration(), ease: "easeInOut" }
-      },
+        scale: currentPhase === "exhale" ? 0.9 : 1.25,
+        opacity: 1,
+        transition: { duration, ease: "easeInOut" }
+      }
     };
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Breathing Exercises</h1>
-        <p className="text-muted-foreground">
-          Practice controlled breathing to reduce stress and improve focus.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="h-full flex flex-col">
-            <CardHeader>
-              <CardTitle>{selectedExercise?.name || "Select an Exercise"}</CardTitle>
-              <CardDescription>{selectedExercise?.description || "Choose a breathing exercise."}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col items-center justify-center p-6">
-              {selectedExercise ? (
-                <>
-                  <div className="relative w-64 h-64 mb-8">
-                    <div className="absolute inset-0 rounded-full bg-gray-200 dark:bg-gray-700"></div>
-                    <motion.div
-                      className="absolute inset-4 rounded-full"
-                      style={{ backgroundColor: selectedExercise.color }}
-                      variants={getAnimationVariants()} // Sekarang tipenya sudah cocok
-                      initial="initial"
-                      animate="animate"
-                      key={`${currentPhase}-${currentCycle}`}
-                    ></motion.div>
-                    <div className="absolute inset-0 flex items-center justify-center text-center">
-                      <div>
-                        <div className="text-3xl font-bold mb-2">{getPhaseText()}</div>
-                        <div className="text-5xl font-bold">{phaseTimeLeft}</div>
-                        {selectedExercise.cycles > 1 && (
-                          <div className="text-sm text-muted-foreground mt-2">
-                            Cycle {currentCycle + 1} of {selectedExercise.cycles}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-4">
-                    {!isRunning ? (
-                      <Button onClick={handleStart} size="lg"><Play className="mr-2 h-5 w-5" /> Start</Button>
-                    ) : (
-                      <Button onClick={handlePause} size="lg"><Pause className="mr-2 h-5 w-5" /> Pause</Button>
-                    )}
-                    <Button onClick={handleReset} variant="outline" size="lg"><RotateCcw className="mr-2 h-5 w-5" /> Reset</Button>
-                  </div>
-
-                  <div className="flex items-center space-x-2 mt-6">
-                    <Switch id="sound" checked={isSoundEnabled} onCheckedChange={setIsSoundEnabled} />
-                    <label htmlFor="sound" className="text-sm font-medium">Enable sound cues</label>
-                    {isSoundEnabled ? <Volume2 className="h-4 w-4 text-muted-foreground" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
-                  </div>
-
-                  <AnimatePresence>
-                    {isCompleted && (
-                      <motion.div 
-                        className="mt-6 p-4 bg-green-100 dark:bg-green-900 rounded-lg text-center"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                      >
-                        <div className="text-lg font-medium text-green-800 dark:text-green-200">Exercise completed!</div>
-                        <div className="text-sm text-green-600 dark:text-green-300 mt-1">Take a moment to notice how you feel.</div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </>
-              ) : (
-                <div className="text-center text-muted-foreground">Select a breathing exercise to get started.</div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-4">
-          {/* List Exercise Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Exercises</CardTitle>
-              <CardDescription>Choose a breathing exercise.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {exercises.map((exercise) => (
-                <div
-                  key={exercise.id}
-                  className={cn(
-                    "p-3 rounded-lg border cursor-pointer transition-colors",
-                    selectedExercise?.id === exercise.id ? "bg-primary/10 border-primary" : "hover:bg-muted"
-                  )}
-                  onClick={() => handleSelectExercise(exercise)}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: exercise.color }}>
-                       {/* Icon logic tetap sama */}
-                       {exercise.icon === "square" && <div className="w-5 h-5 bg-white"></div>}
-                       {exercise.icon === "wind" && <div className="w-6 h-1 bg-white"></div>}
-                       {exercise.icon === "lungs" && <div className="w-5 h-5 bg-white rounded-full"></div>}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">{exercise.name}</div>
-                      <div className="text-sm text-muted-foreground">{exercise.inhaleTime}s inhale, {exercise.holdTime}s hold, {exercise.exhaleTime}s exhale</div>
-                    </div>
+    <div className="container mx-auto p-6 max-w-7xl min-h-[90vh] flex flex-col gap-8 relative">
+      
+      {/* SUCCESS OVERLAY - Ini update utamanya bro */}
+      <AnimatePresence>
+        {isCompleted && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/40 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="max-w-md w-full"
+            >
+              <GlassPanel className="p-10 text-center space-y-6 border-emerald-500/30 shadow-2xl shadow-emerald-500/10">
+                <div className="flex justify-center">
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                    <CheckCircle2 className="w-10 h-10" />
                   </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-bold tracking-tight">Well done!</h2>
+                  <p className="text-foreground/60 leading-relaxed text-lg">
+                    You have completed your ritual. You are now more centered, calm, and ready.
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleReset}
+                  className="w-full h-14 rounded-2xl bg-foreground text-background text-lg font-semibold hover:scale-[1.02] transition-transform"
+                >
+                  Return to Dashboard
+                </Button>
+              </GlassPanel>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* Tips Card */}
-          <Card>
-            <CardHeader><CardTitle>Tips</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-start space-x-2">
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5" />
-                <div className="text-sm">Find a comfortable position and close your eyes if it helps you focus.</div>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-medium tracking-tight bg-gradient-to-r from-foreground to-foreground/40 bg-clip-text text-transparent italic">
+            Quiet the Mind
+          </h1>
+          <p className="text-foreground/50 font-medium text-sm">Controlled breathing for digital wellness.</p>
+        </div>
+        
+        <div className="flex items-center gap-3 p-1.5 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+          <div className="flex items-center gap-2 px-3">
+             <span className="text-[10px] uppercase tracking-widest font-bold opacity-40">Audio</span>
+             <Switch checked={isSoundEnabled} onCheckedChange={setIsSoundEnabled} className="scale-75" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="lg:col-span-8">
+          <GlassPanel className="h-[600px] relative flex flex-col items-center justify-center">
+            {selectedExercise ? (
+              <>
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute w-80 h-80 rounded-full border border-foreground/5 animate-[pulse_4s_infinite]" />
+                  <motion.div
+                    className="w-64 h-64 rounded-full flex items-center justify-center relative shadow-[0_0_50px_-12px_rgba(0,0,0,0.1)]"
+                    style={{ backgroundColor: selectedExercise.color }}
+                    variants={getAnimationVariants()}
+                    initial="initial"
+                    animate={isRunning ? "animate" : "initial"}
+                  >
+                    <div className="absolute inset-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20" />
+                    <div className="relative z-10 text-center text-white">
+                      <AnimatePresence mode="wait">
+                        <motion.div 
+                          key={currentPhase}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          className="text-[10px] uppercase tracking-[0.3em] font-black opacity-80 mb-1"
+                        >
+                          {currentPhase}
+                        </motion.div>
+                      </AnimatePresence>
+                      <div className="text-6xl font-light tracking-tighter">{phaseTimeLeft}</div>
+                    </div>
+                  </motion.div>
+                </div>
+
+                <div className="mt-16 flex flex-col items-center gap-6">
+                  <div className="flex items-center gap-4">
+                    <Button 
+                      onClick={isRunning ? () => setIsRunning(false) : handleStart} 
+                      size="lg" 
+                      className="rounded-full w-20 h-20 bg-foreground text-background hover:scale-105 transition-transform"
+                    >
+                      {isRunning ? <Pause fill="currentColor" /> : <Play fill="currentColor" className="ml-1" />}
+                    </Button>
+                    <Button onClick={handleReset} variant="ghost" size="icon" className="rounded-full hover:bg-foreground/5 h-12 w-12 text-foreground/60">
+                      <RotateCcw className="h-5 w-5" />
+                    </Button>
+                  </div>
+                  {selectedExercise.cycles > 1 && (
+                    <div className="px-4 py-1.5 rounded-full bg-foreground/5 text-[11px] font-bold uppercase tracking-widest opacity-60">
+                      Cycle {currentCycle + 1} of {selectedExercise.cycles}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-foreground/30 flex flex-col items-center gap-4">
+                <Wind className="h-12 w-12 stroke-[1px]" />
+                <p className="font-medium tracking-tight">Select a ritual to begin</p>
               </div>
-              <div className="flex items-start space-x-2">
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5" />
-                <div className="text-sm">Try to breathe through your nose, unless it feels uncomfortable.</div>
+            )}
+          </GlassPanel>
+        </div>
+
+        {/* Sidebar Rituals */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          <GlassPanel className="p-6">
+            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-40 mb-6">Breathing Rituals</h3>
+            <div className="space-y-3">
+              {exercises.map((ex) => (
+                <button
+                  key={ex.id}
+                  onClick={() => { setSelectedExercise(ex); handleReset(); }}
+                  className={cn(
+                    "w-full p-4 rounded-2xl text-left transition-all flex items-center gap-4 group",
+                    selectedExercise?.id === ex.id 
+                      ? "bg-foreground text-background shadow-lg shadow-foreground/10" 
+                      : "hover:bg-foreground/5 bg-transparent border border-transparent"
+                  )}
+                >
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/10" style={{ backgroundColor: ex.color }}>
+                     <Wind className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-sm">{ex.name}</div>
+                    <div className={cn("text-[10px] uppercase tracking-wider font-bold opacity-50", 
+                      selectedExercise?.id === ex.id ? "text-background/80" : ""
+                    )}>
+                      {ex.inhaleTime}s • {ex.holdTime}s • {ex.exhaleTime}s
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </GlassPanel>
+
+          <GlassPanel className="p-6 bg-indigo-500/5 border-indigo-500/10">
+            <div className="flex gap-4 items-start">
+              <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-500">
+                <Info className="h-4 w-4" />
               </div>
-            </CardContent>
-          </Card>
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-widest opacity-70">Pro Tip</h4>
+                <p className="text-sm leading-relaxed text-foreground/70 italic">
+                  &quot;Focus on your diaphragm. Let your belly expand on inhale and contract on exhale.&quot;
+                </p>
+              </div>
+            </div>
+          </GlassPanel>
         </div>
       </div>
     </div>
