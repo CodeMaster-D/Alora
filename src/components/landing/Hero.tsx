@@ -101,6 +101,7 @@ export function Hero() {
                         fill
                         className="object-cover object-right opacity-95"
                         priority
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                 </div>
             </motion.div>
@@ -145,7 +146,7 @@ export function Hero() {
                 <div className="relative h-40 w-40 mx-auto">
                     <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700" />
                     
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={150}>
                         <PieChart>
                             <Pie
                                 data={data}

@@ -7,6 +7,7 @@ export interface User {
   createdAt: Date;
   lastLoginAt: Date;
   preferences: UserPreferences;
+  active_days_streak?: number;
 }
 
 export interface UserPreferences {

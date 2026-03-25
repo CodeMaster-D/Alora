@@ -33,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/authStore";
+import { firebaseService, MoodStats } from "@/services/firebase";
 
 // --- Types & Interfaces ---
 interface MoodData {
@@ -44,25 +45,15 @@ interface MoodData {
 }
 
 interface AnalyticsData {
-  weekly: MoodData[];
-  monthly: MoodData[];
-  yearly: MoodData[];
+  logs: MoodData[];
   patterns: {
     bestDay: string;
     worstDay: string;
     averageMood: number;
     improvement: number;
   };
-  triggers: {
-    name: string;
-    count: number;
-    impact: number;
-  }[];
-  activities: {
-    name: string;
-    count: number;
-    positiveImpact: number;
-  }[];
+  moodCounts: Record<number, number>;
+  factorCounts: Record<string, number>;
 }
 
 const MOOD_COLORS: Record<number, string> = {
@@ -98,39 +89,52 @@ const AnalyticsPage = () => {
 
   // 2. Fetch data tetap jalan di background
   useEffect(() => {
-    if (mounted) {
+    if (mounted && user) {
       fetchAnalyticsData();
     }
-  }, [timeRange, mounted]);
+  }, [timeRange, mounted, user]);
 
   const fetchAnalyticsData = async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
-      const mockData: AnalyticsData = {
-        weekly: generateMockData(7),
-        monthly: generateMockData(30),
-        yearly: generateMockData(365),
-        patterns: {
-          bestDay: "Friday",
-          worstDay: "Monday",
-          averageMood: 3.7,
-          improvement: 12.5,
-        },
-        triggers: [
-          { name: "Work Stress", count: 15, impact: -2.3 },
-          { name: "Lack of Sleep", count: 12, impact: -1.8 },
-          { name: "Exercise", count: 20, impact: 1.5 },
-          { name: "Social Time", count: 18, impact: 2.1 },
-        ],
-        activities: [
-          { name: "Meditation", count: 25, positiveImpact: 1.8 },
-          { name: "Journaling", count: 30, positiveImpact: 1.2 },
-          { name: "Walking", count: 35, positiveImpact: 1.6 },
-          { name: "Reading", count: 20, positiveImpact: 1.4 },
-        ],
-      };
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setAnalyticsData(mockData);
+      const days = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365;
+      const [statsRes, entriesRes] = await Promise.all([
+        firebaseService.mood.getMoodStats(user.id, days),
+        firebaseService.mood.getMoodEntries(user.id)
+      ]);
+
+      if (statsRes.success && statsRes.data && entriesRes.success && entriesRes.data) {
+        const stats = statsRes.data;
+        const entries = entriesRes.data;
+
+        // Map entries (subset for range)
+        const rangeDate = new Date();
+        rangeDate.setDate(rangeDate.getDate() - days);
+        
+        const logs: MoodData[] = entries
+          .filter(e => new Date(e.timestamp) >= rangeDate)
+          .map(e => ({
+            date: new Date(e.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            mood: e.mood,
+            emotion: 'happy', // Placeholder if not in Firestore yet
+            triggers: e.factors || [],
+            activities: [],
+          }))
+          .reverse();
+
+        setAnalyticsData({
+          logs,
+          patterns: {
+            bestDay: "Friday", // Placeholder logic
+            worstDay: "Monday", 
+            averageMood: stats.avgMood,
+            improvement: 0, 
+          },
+          moodCounts: stats.moodCounts,
+          factorCounts: stats.factorCounts,
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);
     } finally {
@@ -138,39 +142,30 @@ const AnalyticsPage = () => {
     }
   };
 
-  function generateMockData(days: number): MoodData[] {
-    const data: MoodData[] = [];
-    const today = new Date();
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      data.push({
-        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        mood: Math.floor(Math.random() * 5) + 1,
-        emotion: ['happy', 'sad', 'anxious', 'calm', 'excited'][Math.floor(Math.random() * 5)],
-        triggers: ['work'],
-        activities: ['exercise'],
-      });
-    }
-    return data;
-  }
-
   const currentData = useMemo(() => {
-    if (!analyticsData) return [];
-    return analyticsData[timeRange === 'week' ? 'weekly' : timeRange === 'month' ? 'monthly' : 'yearly'];
-  }, [analyticsData, timeRange]);
+    return analyticsData?.logs || [];
+  }, [analyticsData]);
 
   const moodDistribution = useMemo(() => {
-    const distribution = [0, 0, 0, 0, 0];
-    currentData.forEach(entry => distribution[entry.mood - 1]++);
+    if (!analyticsData) return [];
+    const counts = analyticsData.moodCounts;
     return [
-      { name: 'Very Sad', value: distribution[0], color: MOOD_COLORS[1] },
-      { name: 'Sad', value: distribution[1], color: MOOD_COLORS[2] },
-      { name: 'Neutral', value: distribution[2], color: MOOD_COLORS[3] },
-      { name: 'Happy', value: distribution[3], color: MOOD_COLORS[4] },
-      { name: 'Very Happy', value: distribution[4], color: MOOD_COLORS[5] },
+      { name: 'Very Sad', value: counts[1] || 0, color: MOOD_COLORS[1] },
+      { name: 'Sad', value: counts[2] || 0, color: MOOD_COLORS[2] },
+      { name: 'Neutral', value: counts[3] || 0, color: MOOD_COLORS[3] },
+      { name: 'Happy', value: counts[4] || 0, color: MOOD_COLORS[4] },
+      { name: 'Very Happy', value: counts[5] || 0, color: MOOD_COLORS[5] },
     ];
-  }, [currentData]);
+  }, [analyticsData]);
+
+  const activitiesData = useMemo(() => {
+    if (!analyticsData) return [];
+    return Object.entries(analyticsData.factorCounts).map(([name, count]) => ({
+      name,
+      count,
+      positiveImpact: 1.5, // Dummy weight
+    })).slice(0, 4);
+  }, [analyticsData]);
 
   // 3. Jika belum mounted, jangan render apa-apa (hindari Hydration Error)
   if (!mounted) return null;
@@ -345,7 +340,7 @@ const AnalyticsPage = () => {
                   <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Emotional variations per day</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[350px] w-full pt-4">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="99%" height="100%" minHeight={300}>
                     <AreaChart data={currentData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
@@ -369,7 +364,7 @@ const AnalyticsPage = () => {
                   <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Ratio of daily sentiments</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[350px] flex flex-col items-center justify-center relative">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="99%" height="100%" minHeight={300}>
                     <PieChart>
                       <Pie data={moodDistribution} innerRadius={80} outerRadius={105} paddingAngle={8} cornerRadius={12} dataKey="value" stroke="none">
                         {moodDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
@@ -393,7 +388,7 @@ const AnalyticsPage = () => {
                   <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Mean mood across the week</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[300px] pt-4">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="99%" height="100%" minHeight={250}>
                     <BarChart data={[
                       { day: 'Mon', mood: 3.2 }, { day: 'Tue', mood: 3.5 }, { day: 'Wed', mood: 3.8 },
                       { day: 'Thu', mood: 3.6 }, { day: 'Fri', mood: 4.1 }, { day: 'Sat', mood: 3.9 }, { day: 'Sun', mood: 3.7 },
@@ -442,7 +437,7 @@ const AnalyticsPage = () => {
                 <CardDescription className="font-medium text-foreground/40 text-xs">Activities that enhance your well-being</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {analyticsData.activities.map((act, idx) => (
+                {activitiesData.map((act, idx) => (
                   <div key={idx} className="space-y-2">
                     <div className="flex justify-between text-xs font-medium uppercase tracking-tighter opacity-80">
                       <span>{act.name}</span>
@@ -459,13 +454,13 @@ const AnalyticsPage = () => {
                 <CardDescription className="font-medium text-foreground/40 text-xs">Negative triggers to manage</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {analyticsData.triggers.map((trig, idx) => (
+                {(activitiesData.length > 2 ? activitiesData.slice(2) : activitiesData).map((trig, idx) => (
                   <div key={idx} className="space-y-2">
                     <div className="flex justify-between text-xs font-medium uppercase tracking-tighter opacity-80">
                       <span>{trig.name}</span>
-                      <span className="text-rose-400">{Math.abs(trig.impact)} severity</span>
+                      <span className="text-rose-400">Low severity</span>
                     </div>
-                    <Progress value={Math.abs(trig.impact) * 20} className="h-1.5 bg-white/10" />
+                    <Progress value={20} className="h-1.5 bg-white/10" />
                   </div>
                 ))}
               </CardContent>

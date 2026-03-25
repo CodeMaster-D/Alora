@@ -29,6 +29,7 @@ interface AuthState {
   updateUser: (data: Partial<User>) => Promise<boolean>;
   updatePreferences: (preferences: Partial<User["preferences"]>) => Promise<boolean>;
   checkAuth: () => Promise<void>;
+  updateStreak: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -68,38 +69,24 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         
         try {
-          // Simulasi delay untuk proses autentikasi
-          await new Promise(resolve => setTimeout(resolve, 1000)); 
+          const response = await firebaseService.auth.loginWithGoogle();
           
-          const dummyGoogleUser: User = {
-            id: "google-dummy-" + Date.now().toString(),
-            email: "user.dummy@gmail.com",
-            displayName: "Google User Dummy",
-            photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=GoogleDummy",
-            createdAt: new Date(),
-            lastLoginAt: new Date(),
-            preferences: {
-              theme: "system",
-              highContrast: false,
-              fontSize: "medium",
-              fontFamily: "default",
-              reducedMotion: false,
-              notifications: true,
-              reminderTime: "09:00"
-            }
-          };
-
-          set({ 
-            user: dummyGoogleUser, 
-            isAuthenticated: true, 
-            isLoading: false 
-          });
-          
-          // Set Cookie pas login Google sukses
-          setAuthCookie('true');
-          return true;
+          if (response.success && response.data) {
+            set({ 
+              user: response.data, 
+              isAuthenticated: true, 
+              isLoading: false 
+            });
+            // Set Cookie pas login Google sukses
+            setAuthCookie('true');
+            return true;
+          } else {
+            console.error("Google Login error:", response.error);
+            set({ isLoading: false });
+            return false;
+          }
         } catch (error) {
-          console.error("Google Login error:", error);
+          console.error("Google Login exception:", error);
           set({ isLoading: false });
           return false;
         }
@@ -240,6 +227,27 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false 
           });
           removeAuthCookie();
+        }
+
+        // Jalankan update streak setelah auth check selesai
+        if (get().isAuthenticated) {
+          get().updateStreak();
+        }
+      },
+
+      updateStreak: async () => {
+        try {
+          const response = await firebaseService.auth.updateDailyStreak();
+          if (response.success && response.data) {
+            const { user } = get();
+            if (user) {
+              set({ 
+                user: { ...user, active_days_streak: response.data.streak } 
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Failed to update streak:", error);
         }
       },
     }),

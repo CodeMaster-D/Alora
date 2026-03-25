@@ -23,16 +23,12 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+import { useAuthStore } from "@/store/authStore";
+import { firebaseService } from "@/services/firebase";
+import { MoodEntry } from "@/types";
+
 // --- INTERFACES ---
-interface MoodEntry {
-  id: string;
-  mood: number;
-  emotion: string;
-  emoji: string;
-  triggers: string[];
-  notes: string;
-  timestamp: string; 
-}
+// Gunakan MoodEntry dari @/types
 
 const moodOptions = [
   { value: 1, label: "Sad", emoji: "😢" },
@@ -63,6 +59,7 @@ const GlassCard = ({ children, className = "" }: { children: React.ReactNode, cl
 );
 
 export default function MoodPage() {
+  const { user } = useAuthStore();
   const [selectedMood, setSelectedMood] = useState<typeof moodOptions[0] | null>(null);
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
   const [triggers, setTriggers] = useState<string[]>([]);
@@ -71,41 +68,51 @@ export default function MoodPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [recentMoods, setRecentMoods] = useState<MoodEntry[]>([]);
 
-  useEffect(() => {
-    const fetchMoods = async () => {
-      setIsLoading(true);
-      await new Promise(r => setTimeout(r, 1000));
-      setRecentMoods([{
-        id: "1", mood: 4, emotion: "happy", emoji: "😊",
-        triggers: ["Work", "Food"], notes: "Progressing well on the new feature!", timestamp: new Date().toISOString()
-      }]);
+  const fetchMoods = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const response = await firebaseService.mood.getMoodEntries(user.id);
+      if (response.success && response.data) {
+        setRecentMoods(response.data);
+      }
+    } catch (error) {
+      console.error("Fetch moods error:", error);
+    } finally {
       setIsLoading(false);
-    };
-    fetchMoods();
-  }, []);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchMoods();
+    }
+  }, [user]);
 
   const handleSubmit = async () => {
     if (!selectedMood) return toast.error("Please select your mood first");
+    if (!user) return toast.error("You must be logged in");
+    
     setIsSubmitting(true);
     try {
-      await new Promise(r => setTimeout(r, 800));
-      const entry: MoodEntry = {
-        id: Date.now().toString(),
+      const result = await firebaseService.mood.addMoodEntry(user.id, {
         mood: selectedMood.value,
-        emotion: selectedEmotion || "neutral",
-        emoji: selectedMood.emoji,
-        triggers,
-        notes,
-        timestamp: new Date().toISOString()
-      };
-      setRecentMoods([entry, ...recentMoods]);
-      toast.success("Daily entry saved");
-      setSelectedMood(null);
-      setSelectedEmotion(null);
-      setTriggers([]);
-      setNotes("");
-    } catch (err) {
-      toast.error("Failed to save entry, please try again");
+        factors: triggers,
+        note: notes,
+      });
+
+      if (result.success) {
+        toast.success("Daily entry saved");
+        setSelectedMood(null);
+        setSelectedEmotion(null);
+        setTriggers([]);
+        setNotes("");
+        fetchMoods(); // Refresh history
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save entry");
     } finally {
       setIsSubmitting(false);
     }
@@ -248,12 +255,12 @@ export default function MoodPage() {
                 recentMoods.map(entry => (
                   <div key={entry.id} className="flex items-center gap-6 p-6 bg-white/40 border border-white/10 rounded-[28px] group hover:border-[#D48C70]/40 transition-all shadow-sm hover:shadow-md">
                     <div className="w-16 h-16 flex items-center justify-center bg-white/60 rounded-[20px] text-4xl shadow-sm group-hover:scale-105 transition-transform">
-                      {entry.emoji}
+                      {moodOptions.find(m => m.value === entry.mood)?.emoji || "😐"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
                         <Badge className="bg-[#D48C70] text-white hover:bg-[#D48C70] border-none px-3 py-0.5 text-[10px] uppercase font-bold">
-                          {entry.emotion}
+                          {moodOptions.find(m => m.value === entry.mood)?.label || "Neutral"}
                         </Badge>
                         <div className="flex items-center gap-1.5 opacity-40">
                           <Clock className="w-3.5 h-3.5" />
@@ -262,9 +269,9 @@ export default function MoodPage() {
                           </span>
                         </div>
                       </div>
-                      <p className="text-base font-semibold text-foreground/80 leading-snug">{entry.notes || "Quiet reflection logged."}</p>
+                      <p className="text-base font-semibold text-foreground/80 leading-snug">{entry.note || "Quiet reflection logged."}</p>
                       <div className="flex gap-2 mt-2">
-                         {entry.triggers.map(t => <span key={t} className="text-[11px] font-bold text-[#D48C70]/60 uppercase tracking-tighter">#{t}</span>)}
+                         {entry.factors?.map(t => <span key={t} className="text-[11px] font-bold text-[#D48C70]/60 uppercase tracking-tighter">#{t}</span>)}
                       </div>
                     </div>
                     <Button variant="ghost" size="icon" className="rounded-full opacity-20 group-hover:opacity-100 group-hover:bg-[#D48C70]/10 group-hover:text-[#D48C70] transition-all">

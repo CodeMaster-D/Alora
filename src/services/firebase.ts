@@ -10,8 +10,31 @@ import {
   JournalForm,
   MoodForm
 } from "@/types";
+import { auth, db } from "./firebase/client";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut,
+  updateProfile as updateAuthProfile,
+  GoogleAuthProvider,
+  signInWithPopup
+} from "firebase/auth";
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where,
+  orderBy,
+  Timestamp,
+  addDoc
+} from "firebase/firestore";
 
-// Interface khusus untuk statistik agar tidak kena error "unexpected any"
+// Interface khusus untuk statistik
 export interface MoodStats {
   totalEntries: number;
   avgMood: number;
@@ -25,249 +48,415 @@ export interface MoodStats {
   factorCounts: Record<string, number>;
 }
 
-// --- MOCK DATA ---
-const mockUsers: User[] = [
-  {
-    id: "user-1",
-    email: "user@example.com",
-    displayName: "Alex Johnson",
-    photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
-    createdAt: new Date("2023-01-15"),
-    lastLoginAt: new Date(),
-    preferences: {
-      theme: "system",
-      highContrast: false,
-      fontSize: "medium",
-      fontFamily: "default",
-      reducedMotion: false,
-      notifications: true,
-      reminderTime: "09:00",
-    },
-  },
-];
-
-const mockMoodEntries: MoodEntry[] = [
-  {
-    id: "mood-1",
-    userId: "user-1",
-    mood: 4,
-    factors: ["exercise", "social"],
-    note: "Had a great day at the park with friends!",
-    timestamp: new Date("2023-06-15T10:30:00"),
-  },
-];
-
-const mockJournalEntries: JournalEntry[] = [
-  {
-    id: "journal-1",
-    userId: "user-1",
-    title: "My First Journal Entry",
-    content: "Today I decided to start journaling to help process my thoughts and emotions.",
-    isPrivate: false,
-    tags: ["beginnings", "hopeful"],
-    mood: 4,
-    timestamp: new Date("2023-06-10T09:00:00"),
-    updatedAt: new Date("2023-06-10T09:00:00"),
-  },
-];
-
-const mockBreathingExercises: BreathingExercise[] = [
-  {
-    id: "breathing-1",
-    name: "Box Breathing",
-    description: "A simple technique to help regulate breathing and reduce stress.",
-    inhaleTime: 4,
-    holdTime: 4,
-    exhaleTime: 4,
-    cycles: 5,
-    icon: "square",
-    color: "#889E81",
-  },
-];
+// Helper to handle dates
+const parseDate = (date: any): Date => {
+  if (date instanceof Timestamp) return date.toDate();
+  if (date?.toDate) return date.toDate();
+  return new Date(date);
+};
 
 // --- AUTH SERVICE ---
 export const authService = {
   login: async (data: LoginForm): Promise<ApiResponse<User>> => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const user = mockUsers.find((u) => u.email === data.email);
-    if (!user) return { success: false, error: "Invalid email or password" };
-    return { success: true, data: user };
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const fbUser = userCredential.user;
+      
+      const userDoc = await getDoc(doc(db, "users", fbUser.uid));
+      if (!userDoc.exists()) throw new Error("User document not found");
+      
+      return { success: true, data: userDoc.data() as User };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
-  
+
+  loginWithGoogle: async (): Promise<ApiResponse<User>> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const fbUser = userCredential.user;
+      
+      const userDoc = await getDoc(doc(db, "users", fbUser.uid));
+      if (!userDoc.exists()) {
+        const newUser: User = {
+          id: fbUser.uid,
+          email: fbUser.email || "",
+          displayName: fbUser.displayName || "",
+          photoURL: fbUser.photoURL || undefined,
+          createdAt: new Date(),
+          lastLoginAt: new Date(),
+          preferences: {
+            theme: "system", 
+            highContrast: false, 
+            fontSize: "medium", 
+            fontFamily: "default",
+            reducedMotion: false, 
+            notifications: true, 
+            reminderTime: "09:00",
+          },
+          active_days_streak: 1,
+        };
+        await setDoc(doc(db, "users", fbUser.uid), newUser);
+        return { success: true, data: newUser };
+      }
+      return { success: true, data: userDoc.data() as User };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
   register: async (data: RegisterForm): Promise<ApiResponse<User>> => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const existingUser = mockUsers.find((u) => u.email === data.email);
-    if (existingUser) return { success: false, error: "User already exists" };
-    
-    const newUser: User = {
-      id: `user-${mockUsers.length + 1}`,
-      email: data.email,
-      displayName: data.displayName,
-      createdAt: new Date(),
-      lastLoginAt: new Date(),
-      preferences: {
-        theme: "system", highContrast: false, fontSize: "medium", fontFamily: "default",
-        reducedMotion: false, notifications: true, reminderTime: "09:00",
-      },
-    };
-    mockUsers.push(newUser);
-    return { success: true, data: newUser };
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const fbUser = userCredential.user;
+      
+      await updateAuthProfile(fbUser, { displayName: data.displayName });
+      
+      const newUser: User = {
+        id: fbUser.uid,
+        email: data.email,
+        displayName: data.displayName,
+        createdAt: new Date(),
+        lastLoginAt: new Date(),
+        preferences: {
+          theme: "system", 
+          highContrast: false, 
+          fontSize: "medium", 
+          fontFamily: "default",
+          reducedMotion: false, 
+          notifications: true, 
+          reminderTime: "09:00",
+        },
+        active_days_streak: 1,
+      };
+      
+      await setDoc(doc(db, "users", fbUser.uid), newUser);
+      return { success: true, data: newUser };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   logout: async (): Promise<ApiResponse<void>> => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    return { success: true };
+    try {
+      await signOut(auth);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   getCurrentUser: async (): Promise<ApiResponse<User | null>> => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    return { success: true, data: mockUsers[0] };
+    try {
+      const fbUser = await new Promise<any>((resolve) => {
+        const unsubscribe = auth.onAuthStateChanged((u) => {
+          unsubscribe();
+          resolve(u);
+        });
+      });
+      if (!fbUser) return { success: true, data: null };
+
+      const userDoc = await getDoc(doc(db, "users", fbUser.uid));
+      if (!userDoc.exists()) return { success: true, data: null };
+      return { success: true, data: userDoc.data() as User };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   updateProfile: async (userId: string, data: Partial<User>): Promise<ApiResponse<User>> => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const index = mockUsers.findIndex((u) => u.id === userId);
-    if (index === -1) return { success: false, error: "User not found" };
-    mockUsers[index] = { ...mockUsers[index], ...data };
-    return { success: true, data: mockUsers[index] };
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, data);
+      const updated = await getDoc(userRef);
+      return { success: true, data: updated.data() as User };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   updatePreferences: async (userId: string, preferences: Partial<UserPreferences>): Promise<ApiResponse<UserPreferences>> => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const index = mockUsers.findIndex((u) => u.id === userId);
-    if (index === -1) return { success: false, error: "User not found" };
-    mockUsers[index].preferences = { ...mockUsers[index].preferences, ...preferences };
-    return { success: true, data: mockUsers[index].preferences };
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, { preferences });
+      const updated = await getDoc(userRef);
+      return { success: true, data: (updated.data() as User).preferences };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  updateDailyStreak: async (): Promise<ApiResponse<{ streak: number }>> => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("User not authenticated");
+      
+      const token = await currentUser.getIdToken();
+      
+      const response = await fetch("/api/user/streak", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      
+      return { success: true, data: { streak: data.streak } };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 };
 
 // --- MOOD SERVICE ---
 export const moodService = {
   getMoodEntries: async (userId: string): Promise<ApiResponse<MoodEntry[]>> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return { success: true, data: mockMoodEntries.filter(e => e.userId === userId) };
+    try {
+      const q = query(collection(db, "moods"), where("userId", "==", userId), orderBy("timestamp", "desc"));
+      const querySnapshot = await getDocs(q);
+      const entries: MoodEntry[] = [];
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        entries.push({ 
+          ...data, 
+          id: docSnap.id,
+          timestamp: parseDate(data.timestamp) 
+        } as MoodEntry);
+      });
+      return { success: true, data: entries };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   addMoodEntry: async (userId: string, data: MoodForm): Promise<ApiResponse<MoodEntry>> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const newEntry: MoodEntry = {
-      id: `mood-${mockMoodEntries.length + 1}`,
-      userId,
-      mood: data.mood,
-      factors: data.factors,
-      note: data.note,
-      timestamp: new Date(),
-    };
-    mockMoodEntries.push(newEntry);
-    return { success: true, data: newEntry };
+    try {
+      const timestamp = new Date();
+      const docRef = await addDoc(collection(db, "moods"), {
+        userId,
+        ...data,
+        timestamp,
+      });
+      return { 
+        success: true, 
+        data: { id: docRef.id, userId, ...data, timestamp } as MoodEntry 
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   updateMoodEntry: async (entryId: string, data: Partial<MoodForm>): Promise<ApiResponse<MoodEntry>> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const index = mockMoodEntries.findIndex(e => e.id === entryId);
-    if (index === -1) return { success: false, error: "Mood entry not found" };
-    if (data.mood !== undefined) mockMoodEntries[index].mood = data.mood;
-    if (data.factors) mockMoodEntries[index].factors = data.factors;
-    if (data.note !== undefined) mockMoodEntries[index].note = data.note;
-    return { success: true, data: mockMoodEntries[index] };
+    try {
+      const ref = doc(db, "moods", entryId);
+      await updateDoc(ref, data);
+      const updated = await getDoc(ref);
+      const entryData = updated.data();
+      return { 
+        success: true, 
+        data: { ...entryData, id: updated.id, timestamp: parseDate(entryData?.timestamp) } as MoodEntry 
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   deleteMoodEntry: async (entryId: string): Promise<ApiResponse<void>> => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const index = mockMoodEntries.findIndex(e => e.id === entryId);
-    if (index === -1) return { success: false, error: "Mood entry not found" };
-    mockMoodEntries.splice(index, 1);
-    return { success: true };
+    try {
+      await deleteDoc(doc(db, "moods", entryId));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   getMoodStats: async (userId: string, days: number = 30): Promise<ApiResponse<MoodStats>> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    
-    const entries = mockMoodEntries.filter(e => e.userId === userId && e.timestamp >= startDate);
-    const totalEntries = entries.length;
-    const avgMood = totalEntries > 0 ? entries.reduce((s, e) => s + e.mood, 0) / totalEntries : 0;
-    
-    const moodCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    entries.forEach(e => {
-      const val = e.mood as keyof typeof moodCounts;
-      if (moodCounts[val] !== undefined) moodCounts[val]++;
-    });
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      const q = query(
+        collection(db, "moods"), 
+        where("userId", "==", userId),
+        where("timestamp", ">=", startDate)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const entries: MoodEntry[] = [];
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        entries.push({ ...data, timestamp: parseDate(data.timestamp) } as MoodEntry);
+      });
 
-    const factorCounts: Record<string, number> = {};
-    entries.forEach(e => {
-      e.factors.forEach(f => factorCounts[f] = (factorCounts[f] || 0) + 1);
-    });
+      const totalEntries = entries.length;
+      const avgMood = totalEntries > 0 ? entries.reduce((s, e) => s + e.mood, 0) / totalEntries : 0;
+      
+      const moodCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      const factorCounts: Record<string, number> = {};
 
-    return {
-      success: true,
-      data: { totalEntries, avgMood: Math.round(avgMood * 10) / 10, moodCounts, factorCounts }
-    };
+      entries.forEach(e => {
+        const val = e.mood as keyof typeof moodCounts;
+        if (moodCounts[val] !== undefined) moodCounts[val]++;
+        
+        e.factors.forEach(f => {
+          factorCounts[f] = (factorCounts[f] || 0) + 1;
+        });
+      });
+
+      return {
+        success: true,
+        data: { totalEntries, avgMood: Math.round(avgMood * 10) / 10, moodCounts, factorCounts }
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 };
 
 // --- JOURNAL SERVICE ---
 export const journalService = {
   getJournalEntries: async (userId: string): Promise<ApiResponse<JournalEntry[]>> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return { success: true, data: mockJournalEntries.filter(e => e.userId === userId) };
+    try {
+      const q = query(collection(db, "journals"), where("userId", "==", userId), orderBy("updatedAt", "desc"));
+      const querySnapshot = await getDocs(q);
+      const entries: JournalEntry[] = [];
+      querySnapshot.forEach((d) => {
+        const data = d.data();
+        entries.push({ 
+          ...data, 
+          id: d.id,
+          timestamp: parseDate(data.timestamp),
+          updatedAt: parseDate(data.updatedAt)
+        } as JournalEntry);
+      });
+      return { success: true, data: entries };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   getJournalEntry: async (entryId: string): Promise<ApiResponse<JournalEntry>> => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const entry = mockJournalEntries.find(e => e.id === entryId);
-    if (!entry) return { success: false, error: "Journal not found" };
-    return { success: true, data: entry };
+    try {
+      const docSnap = await getDoc(doc(db, "journals", entryId));
+      if (!docSnap.exists()) return { success: false, error: "Journal not found" };
+      const data = docSnap.data();
+      return { 
+        success: true, 
+        data: { 
+          ...data, 
+          id: docSnap.id,
+          timestamp: parseDate(data.timestamp),
+          updatedAt: parseDate(data.updatedAt)
+        } as JournalEntry 
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   addJournalEntry: async (userId: string, data: JournalForm): Promise<ApiResponse<JournalEntry>> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const newEntry: JournalEntry = {
-      id: `journal-${mockJournalEntries.length + 1}`,
-      userId, ...data, timestamp: new Date(), updatedAt: new Date(),
-    };
-    mockJournalEntries.push(newEntry);
-    return { success: true, data: newEntry };
+    try {
+      const timestamp = new Date();
+      const docRef = await addDoc(collection(db, "journals"), {
+        userId,
+        ...data,
+        timestamp,
+        updatedAt: timestamp
+      });
+      return { 
+        success: true, 
+        data: { id: docRef.id, userId, ...data, timestamp, updatedAt: timestamp } as JournalEntry 
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   updateJournalEntry: async (entryId: string, data: Partial<JournalForm>): Promise<ApiResponse<JournalEntry>> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const index = mockJournalEntries.findIndex(e => e.id === entryId);
-    if (index === -1) return { success: false, error: "Journal not found" };
-    mockJournalEntries[index] = { ...mockJournalEntries[index], ...data, updatedAt: new Date() };
-    return { success: true, data: mockJournalEntries[index] };
+    try {
+      const ref = doc(db, "journals", entryId);
+      const updatedAt = new Date();
+      await updateDoc(ref, { ...data, updatedAt });
+      
+      const docSnap = await getDoc(ref);
+      const entryData = docSnap.data();
+      return { 
+        success: true, 
+        data: { 
+          ...entryData, 
+          id: ref.id,
+          timestamp: parseDate(entryData?.timestamp),
+          updatedAt: parseDate(entryData?.updatedAt)
+        } as JournalEntry 
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   deleteJournalEntry: async (entryId: string): Promise<ApiResponse<void>> => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const index = mockJournalEntries.findIndex(e => e.id === entryId);
-    if (index === -1) return { success: false, error: "Journal not found" };
-    mockJournalEntries.splice(index, 1);
-    return { success: true };
+    try {
+      await deleteDoc(doc(db, "journals", entryId));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
-  searchJournalEntries: async (userId: string, query: string): Promise<ApiResponse<JournalEntry[]>> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const q = query.toLowerCase();
-    const results = mockJournalEntries.filter(e => 
-      e.userId === userId && (e.title.toLowerCase().includes(q) || e.content.toLowerCase().includes(q))
-    );
-    return { success: true, data: results };
+  searchJournalEntries: async (userId: string, searchQuery: string): Promise<ApiResponse<JournalEntry[]>> => {
+    try {
+      // NOTE: Firestore doesn't support built-in text search easily. You usually need Algolia/ElasticSearch.
+      // We will perform client-side filtering after retrieving user queries to simplify.
+      const q = query(collection(db, "journals"), where("userId", "==", userId));
+      const querySnapshot = await getDocs(q);
+      const entries: JournalEntry[] = [];
+      const sq = searchQuery.toLowerCase();
+
+      querySnapshot.forEach((d) => {
+        const data = d.data();
+        if (data.title?.toLowerCase().includes(sq) || data.content?.toLowerCase().includes(sq)) {
+          entries.push({ 
+            ...data, 
+            id: d.id,
+            timestamp: parseDate(data.timestamp),
+            updatedAt: parseDate(data.updatedAt)
+          } as JournalEntry);
+        }
+      });
+      return { success: true, data: entries.sort((a,b) => b.updatedAt.getTime() - a.updatedAt.getTime()) };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 };
 
 // --- BREATHING SERVICE ---
 export const breathingService = {
   getBreathingExercises: async (): Promise<ApiResponse<BreathingExercise[]>> => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    return { success: true, data: mockBreathingExercises };
+    try {
+      const q = query(collection(db, "breathing_exercises"));
+      const querySnapshot = await getDocs(q);
+      const exercises: BreathingExercise[] = [];
+      querySnapshot.forEach((docSnap) => {
+        exercises.push({ ...docSnap.data(), id: docSnap.id } as BreathingExercise);
+      });
+      return { success: true, data: exercises };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 
   getBreathingExercise: async (id: string): Promise<ApiResponse<BreathingExercise>> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const ex = mockBreathingExercises.find(e => e.id === id);
-    return ex ? { success: true, data: ex } : { success: false, error: "Not found" };
+    try {
+      const docSnap = await getDoc(doc(db, "breathing_exercises", id));
+      if (!docSnap.exists()) return { success: false, error: "Not found" };
+      return { success: true, data: { ...docSnap.data(), id: docSnap.id } as BreathingExercise };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   },
 };
 

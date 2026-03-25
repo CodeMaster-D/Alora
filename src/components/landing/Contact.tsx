@@ -14,7 +14,7 @@ export function Contact() {
           
           <div className="relative z-10 text-center space-y-8">
             <h2 className="text-3xl md:text-5xl font-medium tracking-tight">
-              Have questions? <br /> Let&apos;s talk.
+              Have questions? <br />Let&apos;s talk.
             </h2>
             <p className="text-foreground/50 max-w-md mx-auto">
               Whether you want to share feedback or just say hi, 

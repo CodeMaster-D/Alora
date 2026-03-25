@@ -33,6 +33,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { MoodEntry } from "@/types";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
+import { firebaseService } from "@/services/firebase";
 
 // --- KONFIGURASI MOOD ---
 const MOOD_EMOJIS: { [key: number]: string } = {
@@ -49,53 +51,41 @@ const GlassCard = ({ children, className = "" }: { children: React.ReactNode, cl
   </Card>
 );
 
-// --- HELPER: GENERATE DUMMY DATA ---
-const generateDummyMoodEntries = (days: number): MoodEntry[] => {
-  const data: MoodEntry[] = [];
-  const today = new Date();
-  const factorsList = [["Work"], ["Sleep"], ["Exercise"], ["Social"], ["Family"], ["Work", "Stress"]];
-  for (let i = 0; i < days; i++) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const randomMood = Math.floor(Math.random() * 5) + 1;
-    
-    // Casting ke MoodEntry untuk menghindari error "string is not assignable to Date"
-    const entry = {
-      id: `dummy-${i}`,
-      userId: "user-dummy",
-      mood: randomMood,
-      timestamp: date.toISOString(), // Tetap string sesuai error yang lu alami
-      factors: factorsList[Math.floor(Math.random() * factorsList.length)],
-      notes: "This is a dummy note",
-      createdAt: date.toISOString(),
-    } as unknown as MoodEntry;
-    
-    data.push(entry);
-  }
-  return data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-};
-
 export default function DashboardPage() {
+  const { user } = useAuthStore();
   const [recentMoods, setRecentMoods] = useState<MoodEntry[]>([]);
+  const [journalCount, setJournalCount] = useState(0);
   const [chartData, setChartData] = useState<{ date: string; mood: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) return;
       setIsLoading(true);
       try {
-        // Simulasi loading biar keliatan skeletonnya
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const dummyEntries = generateDummyMoodEntries(30);
-        setRecentMoods(dummyEntries.slice(0, 5));
-        const sortedAsc = [...dummyEntries].sort(
-          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
-        const formattedData = sortedAsc.map(entry => ({
-          date: new Date(entry.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-          mood: entry.mood,
-        }));
-        setChartData(formattedData);
+        const [moodResponse, journalResponse] = await Promise.all([
+          firebaseService.mood.getMoodEntries(user.id),
+          firebaseService.journal.getJournalEntries(user.id)
+        ]);
+        
+        if (moodResponse.success && moodResponse.data) {
+          const allMoods = moodResponse.data;
+          setRecentMoods(allMoods.slice(0, 5));
+          
+          // Data untuk chart (30 hari terakhir)
+          const sortedAsc = [...allMoods].sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+          const formattedData = sortedAsc.map(entry => ({
+            date: new Date(entry.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            mood: entry.mood,
+          }));
+          setChartData(formattedData);
+        }
+
+        if (journalResponse.success && journalResponse.data) {
+          setJournalCount(journalResponse.data.length);
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -103,7 +93,7 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [user]);
 
   const getMoodIcon = (mood: number) => {
     switch (mood) {
@@ -150,7 +140,7 @@ export default function DashboardPage() {
 
       {/* Stats Cards dengan Skeleton State */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {isLoading ? (
             // Skeleton View
             Array(4).fill(0).map((_, i) => (
@@ -174,9 +164,9 @@ export default function DashboardPage() {
             // Content View
             [
               { title: "Mood Today", val: recentMoods[0]?.mood ? `${recentMoods[0].mood}/5` : "N/A", sub: recentMoods[0] ? `Logged at ${new Date(recentMoods[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "No entry", icon: Heart, color: "text-rose-500", bg: "bg-rose-500/10", emoji: MOOD_EMOJIS[recentMoods[0]?.mood] },
-              { title: "Journal Entries", val: "12", sub: "+3 from last month", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
-              { title: "Breathing", val: "8", sub: "Sessions this week", icon: Wind, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-              { title: "Streak", val: "5 Days", sub: "Keep the momentum!", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" }
+              { title: "Journal Entries", val: journalCount.toString(), sub: "Total entries", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
+              { title: "Breathing", val: "0", sub: "Sessions this week", icon: Wind, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+              { title: "Streak", val: "0 Days", sub: "Keep the momentum!", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" }
             ].map((item, i) => (
               <motion.div 
                 key={`stat-card-${i}`} 
@@ -225,7 +215,7 @@ export default function DashboardPage() {
                   <Skeleton className="h-[200px] w-[300px] md:w-[500px] rounded-2xl opacity-50" />
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minHeight={350}>
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
