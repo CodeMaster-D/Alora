@@ -71,9 +71,10 @@ const MOOD_LABELS: Record<number, string> = {
 };
 
 // --- Custom Components ---
+// Diupdate menyesuaikan global.css biar gak nabrak, pakai white dengan opacity biar jadi glassmorphism cerah
 const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
   <Card className={cn(
-    "bg-white/40 dark:bg-zinc-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-md rounded-[32px] overflow-hidden transition-all duration-500",
+    "bg-white/80 dark:bg-white/10 backdrop-blur-3xl border border-white/60 dark:border-white/20 rounded-[32px] overflow-hidden transition-all duration-500",
     className
   )}>
     {children}
@@ -82,7 +83,7 @@ const GlassCard = ({ children, className = "" }: { children: React.ReactNode, cl
 
 const AnalyticsPage = () => {
   const { user } = useAuthStore();
-  const [mounted, setMounted] = useState(false); // Penyelamat Hydration
+  const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
@@ -101,7 +102,6 @@ const AnalyticsPage = () => {
         const stats = statsRes.data;
         const entries = entriesRes.data;
 
-        // Filter and map entries for range
         const now = new Date();
         const rangeDate = new Date();
         rangeDate.setDate(now.getDate() - days);
@@ -121,7 +121,6 @@ const AnalyticsPage = () => {
           }))
           .reverse();
 
-        // Calculate improvement (comparing last half vs first half of logs)
         let improvement = 0;
         if (logs.length >= 2) {
           const mid = Math.floor(logs.length / 2);
@@ -132,7 +131,6 @@ const AnalyticsPage = () => {
           improvement = avg1 > 0 ? Math.round(((avg2 - avg1) / avg1) * 100) : 0;
         }
 
-        // Calculate Weekly Patterns (Avg per Day of Week)
         const weekdayMoods: Record<number, number[]> = {0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[]};
         filteredEntries.forEach(e => {
           const day = new Date(e.timestamp).getDay();
@@ -144,7 +142,6 @@ const AnalyticsPage = () => {
           mood: moods.length > 0 ? Math.round((moods.reduce((s, m) => s + m, 0) / moods.length) * 10) / 10 : 0
         }));
 
-        // Best/Worst Day
         const validDays = weekdayAvgs.filter(d => d.mood > 0);
         let bestDay = "N/A";
         let worstDay = "N/A";
@@ -173,12 +170,10 @@ const AnalyticsPage = () => {
     }
   }, [user, timeRange]);
 
-  // 1. Set mounted ke true setelah komponen masuk ke browser
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 2. Fetch data tetap jalan di background
   useEffect(() => {
     if (mounted && user) {
       fetchAnalyticsData();
@@ -206,25 +201,24 @@ const AnalyticsPage = () => {
     return Object.entries(analyticsData.factorCounts).map(([name, count]) => ({
       name,
       count,
-      positiveImpact: 1.5, // Dummy weight
+      positiveImpact: 1.5, 
     })).slice(0, 4);
   }, [analyticsData]);
 
-  // 3. Jika belum mounted, jangan render apa-apa (hindari Hydration Error)
   if (!mounted) return null;
 
-  // 4. Render Skeleton State (Sudah diperbaiki tanpa Math.random)
+  // Render Skeleton State dengan GlassCard yang udah nyatu sama global.css
   if (isLoading || !analyticsData) {
     return (
       <div className="container mx-auto p-6 max-w-7xl space-y-10">
         <div className="flex justify-between items-center">
           <div className="space-y-3">
-            <Skeleton className="h-10 w-72 rounded-2xl" />
-            <Skeleton className="h-4 w-56 rounded-lg opacity-60" />
+            <Skeleton className="h-10 w-72 rounded-2xl bg-foreground/10" />
+            <Skeleton className="h-4 w-56 rounded-lg bg-foreground/5" />
           </div>
           <div className="flex gap-3">
-             <Skeleton className="h-12 w-32 rounded-2xl" />
-             <Skeleton className="h-12 w-12 rounded-2xl" />
+             <Skeleton className="h-12 w-32 rounded-2xl bg-foreground/10" />
+             <Skeleton className="h-12 w-12 rounded-2xl bg-foreground/10" />
           </div>
         </div>
         
@@ -233,11 +227,11 @@ const AnalyticsPage = () => {
             <GlassCard key={i} className="h-36">
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-8 w-8 rounded-xl" />
+                  <Skeleton className="h-3 w-20 bg-foreground/10" />
+                  <Skeleton className="h-8 w-8 rounded-xl bg-foreground/10" />
                 </div>
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-3 w-32 opacity-50" />
+                <Skeleton className="h-10 w-24 bg-foreground/10" />
+                <Skeleton className="h-3 w-32 bg-foreground/5" />
               </CardContent>
             </GlassCard>
           ))}
@@ -246,36 +240,36 @@ const AnalyticsPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <GlassCard className="lg:col-span-2">
             <CardHeader>
-              <Skeleton className="h-6 w-40 mb-2" />
-              <Skeleton className="h-4 w-60" />
+              <Skeleton className="h-6 w-40 mb-2 bg-foreground/10" />
+              <Skeleton className="h-4 w-60 bg-foreground/5" />
             </CardHeader>
             <CardContent className="h-[350px] w-full pt-4 flex flex-col justify-end gap-4 px-8 pb-6">
-               <div className="flex items-end justify-between h-full w-full pb-4 border-b border-white/5">
-                  {[40, 70, 45, 90, 65, 80, 30, 60, 85, 50, 75, 40].map((h, i) => (
-                    <Skeleton 
-                      key={i} 
-                      className="w-1.5 rounded-full bg-indigo-500/20" 
-                      style={{ height: `${h}%`, opacity: (i % 2 === 0) ? 0.3 : 0.1 }} 
-                    />
-                  ))}
+               <div className="flex items-end justify-between h-full w-full pb-4 border-b border-foreground/10">
+                 {[40, 70, 45, 90, 65, 80, 30, 60, 85, 50, 75, 40].map((h, i) => (
+                   <Skeleton 
+                     key={i} 
+                     className="w-1.5 rounded-full bg-primary/40" 
+                     style={{ height: `${h}%`, opacity: (i % 2 === 0) ? 0.7 : 0.4 }} 
+                   />
+                 ))}
                </div>
                <div className="flex justify-between w-full px-2">
-                  {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-2 w-8 opacity-30" />)}
+                 {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-2 w-8 bg-foreground/10" />)}
                </div>
             </CardContent>
           </GlassCard>
 
           <GlassCard>
              <CardHeader>
-                <Skeleton className="h-6 w-32 mb-2" />
-                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-6 w-32 mb-2 bg-foreground/10" />
+                <Skeleton className="h-4 w-48 bg-foreground/5" />
              </CardHeader>
              <CardContent className="h-[350px] flex flex-col items-center justify-center relative">
                 <div className="relative flex items-center justify-center">
-                  <div className="h-48 w-48 rounded-full border-[16px] border-indigo-500/5 animate-pulse" />
+                  <div className="h-48 w-48 rounded-full border-[16px] border-primary/10 animate-pulse" />
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-                    <Skeleton className="h-2 w-10 opacity-40" />
-                    <Skeleton className="h-5 w-16 opacity-60" />
+                    <Skeleton className="h-2 w-10 bg-foreground/10" />
+                    <Skeleton className="h-5 w-16 bg-foreground/20" />
                   </div>
                 </div>
              </CardContent>
@@ -285,24 +279,24 @@ const AnalyticsPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
            <GlassCard className="h-[380px]">
               <CardHeader>
-                 <Skeleton className="h-6 w-36 mb-2" />
-                 <Skeleton className="h-4 w-52" />
+                 <Skeleton className="h-6 w-36 mb-2 bg-foreground/10" />
+                 <Skeleton className="h-4 w-52 bg-foreground/5" />
               </CardHeader>
               <CardContent className="flex items-end justify-between h-[220px] px-6">
                  {[60, 80, 40, 100, 70, 90, 50].map((h, i) => (
                    <div key={i} className="flex flex-col items-center gap-4">
-                      <Skeleton className="w-8 rounded-t-lg" style={{ height: `${h}px` }} />
-                      <Skeleton className="h-3 w-8" />
+                      <Skeleton className="w-8 rounded-t-lg bg-primary/30" style={{ height: `${h}px` }} />
+                      <Skeleton className="h-3 w-8 bg-foreground/10" />
                    </div>
                  ))}
               </CardContent>
            </GlassCard>
 
            <div className="space-y-6">
-              <Skeleton className="h-[140px] rounded-[32px]" />
+              <Skeleton className="h-[140px] rounded-[32px] bg-foreground/5" />
               <div className="grid grid-cols-2 gap-4">
-                 <Skeleton className="h-[120px] rounded-[32px]" />
-                 <Skeleton className="h-[120px] rounded-[32px]" />
+                 <Skeleton className="h-[120px] rounded-[32px] bg-foreground/5" />
+                 <Skeleton className="h-[120px] rounded-[32px] bg-foreground/5" />
               </div>
            </div>
         </div>
@@ -325,18 +319,18 @@ const AnalyticsPage = () => {
             <p className="text-foreground/60 font-medium italic mt-1">Your mental health analytics dashboard</p>
           </div>
           
-          <div className="flex items-center gap-3 p-1.5 bg-white/30 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/20">
+          <div className="flex items-center gap-3 p-1.5 bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-2xl border border-white/40 dark:border-white/20">
             <Select value={timeRange} onValueChange={(v: 'week' | 'month' | 'year') => setTimeRange(v)}>
               <SelectTrigger className="w-32 bg-transparent border-none focus:ring-0 font-medium shadow-none">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-white/20 backdrop-blur-3xl bg-white/80 dark:bg-black/80">
+              <SelectContent className="rounded-xl border-white/20 backdrop-blur-3xl bg-white/90 dark:bg-zinc-900/90">
                 <SelectItem value="week">Weekly</SelectItem>
                 <SelectItem value="month">Monthly</SelectItem>
                 <SelectItem value="year">Yearly</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/40 transition-colors">
+            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/60 dark:hover:bg-white/20 transition-colors">
               <Download className="h-5 w-5" />
             </Button>
           </div>
@@ -358,7 +352,7 @@ const AnalyticsPage = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-medium flex items-baseline gap-2">
+                <div className="text-3xl font-medium flex items-baseline gap-2 text-foreground">
                   {item.val}
                   {item.emoji && <span className="text-xl opacity-90">{item.emoji}</span>}
                 </div>
@@ -369,17 +363,16 @@ const AnalyticsPage = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="bg-white/20 dark:bg-white/5 p-1 rounded-2xl border border-white/20 h-12">
-            <TabsTrigger value="overview" className="rounded-xl px-8 font-medium data-[state=active]:bg-white/60 dark:data-[state=active]:bg-white/10 text-foreground/50 data-[state=active]:text-foreground shadow-none transition-all">Overview</TabsTrigger>
-            <TabsTrigger value="dynamics" className="rounded-xl px-8 font-medium data-[state=active]:bg-white/60 dark:data-[state=active]:bg-white/10 text-foreground/50 data-[state=active]:text-foreground shadow-none transition-all">Dynamics</TabsTrigger>
+          <TabsList className="bg-white/40 dark:bg-white/10 p-1 rounded-2xl border border-white/40 dark:border-white/20 h-12">
+            <TabsTrigger value="overview" className="rounded-xl px-8 font-medium data-[state=active]:bg-white/90 dark:data-[state=active]:bg-white/20 text-foreground/50 data-[state=active]:text-foreground shadow-none transition-all">Overview</TabsTrigger>
+            <TabsTrigger value="dynamics" className="rounded-xl px-8 font-medium data-[state=active]:bg-white/90 dark:data-[state=active]:bg-white/20 text-foreground/50 data-[state=active]:text-foreground shadow-none transition-all">Dynamics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-8">
-            {/* ... Konten Overview Tetap Sama ... */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <GlassCard className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-lg font-medium">Mood Trajectory</CardTitle>
+                  <CardTitle className="text-lg font-medium text-foreground">Mood Trajectory</CardTitle>
                   <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Emotional variations per day</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[350px] w-full pt-4">
@@ -387,15 +380,15 @@ const AnalyticsPage = () => {
                     <AreaChart data={currentData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="var(--color-primary, #6366f1)" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="var(--color-primary, #6366f1)" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" strokeOpacity={0.1} />
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.5 }} dy={10} />
                       <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.5 }} dx={-10} />
-                      <Tooltip contentStyle={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(20px)', backgroundColor: 'rgba(255,255,255,0.8)', color: '#000' }} />
-                      <Area type="monotone" dataKey="mood" stroke="#6366f1" strokeWidth={2.5} fill="url(#colorMood)" />
+                      <Tooltip contentStyle={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(20px)', backgroundColor: 'var(--color-background)', color: 'var(--color-foreground)' }} />
+                      <Area type="monotone" dataKey="mood" stroke="var(--color-primary, #6366f1)" strokeWidth={2.5} fill="url(#colorMood)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -403,7 +396,7 @@ const AnalyticsPage = () => {
 
               <GlassCard>
                 <CardHeader>
-                  <CardTitle className="text-lg font-medium">Distribution</CardTitle>
+                  <CardTitle className="text-lg font-medium text-foreground">Distribution</CardTitle>
                   <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Ratio of daily sentiments</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[350px] flex flex-col items-center justify-center relative">
@@ -412,12 +405,12 @@ const AnalyticsPage = () => {
                       <Pie data={moodDistribution} innerRadius={80} outerRadius={105} paddingAngle={8} cornerRadius={12} dataKey="value" stroke="none">
                         {moodDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                       </Pie>
-                      <Tooltip cursor={{ fill: 'transparent' }} />
+                      <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: 'var(--color-background)', color: 'var(--color-foreground)', borderRadius: '12px', border: 'none' }} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-[9px] font-medium text-foreground/30 uppercase tracking-[0.2em]">Status</span>
-                    <span className="text-xl font-medium text-indigo-500 tracking-tight">STABLE</span>
+                    <span className="text-[9px] font-medium text-foreground/40 uppercase tracking-[0.2em]">Status</span>
+                    <span className="text-xl font-medium text-primary tracking-tight">STABLE</span>
                   </div>
                 </CardContent>
               </GlassCard>
@@ -427,43 +420,43 @@ const AnalyticsPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <GlassCard>
                 <CardHeader>
-                  <CardTitle className="text-lg font-medium">Weekly Pattern</CardTitle>
+                  <CardTitle className="text-lg font-medium text-foreground">Weekly Pattern</CardTitle>
                   <CardDescription className="font-medium text-foreground/40 text-xs tracking-tight">Mean mood across the week</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[300px] pt-4">
                   <ResponsiveContainer width="99%" height="100%" minHeight={250}>
                     <BarChart data={analyticsData.weekdayAvgs}>
                       <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.5 }} />
-                      <Tooltip cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
-                      <Bar dataKey="mood" fill="#6366f1" radius={[12, 12, 12, 12]} barSize={28} />
+                      <Tooltip cursor={{ fill: 'currentColor', opacity: 0.05 }} contentStyle={{ backgroundColor: 'var(--color-background)', color: 'var(--color-foreground)', borderRadius: '12px', border: 'none' }} />
+                      <Bar dataKey="mood" fill="var(--color-primary, #6366f1)" radius={[12, 12, 12, 12]} barSize={28} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </GlassCard>
 
               <div className="space-y-6">
-                <GlassCard className="bg-indigo-500/5 border-indigo-500/20">
+                <GlassCard className="bg-primary/5 dark:bg-primary/10 border-primary/20">
                   <CardHeader className="pb-2 flex flex-row items-center gap-4">
-                    <div className="h-10 w-10 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-500">
+                    <div className="h-10 w-10 bg-primary/20 rounded-2xl flex items-center justify-center text-primary">
                       <ChartLine className="h-5 w-5" strokeWidth={1.5} />
                     </div>
-                    <CardTitle className="text-sm font-medium uppercase tracking-tight">System Insight</CardTitle>
+                    <CardTitle className="text-sm font-medium uppercase tracking-tight text-foreground">System Insight</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm font-medium leading-relaxed text-foreground/70">
-                    High consistency detected on <span className="text-indigo-500">Fridays</span>. Your average mood improves by 0.8 points when ‘Social Time’ is logged as a trigger.
+                  <CardContent className="text-sm font-medium leading-relaxed text-foreground/80">
+                    High consistency detected on <span className="text-primary font-bold">Fridays</span>. Your average mood improves by 0.8 points when ‘Social Time’ is logged as a trigger.
                   </CardContent>
                 </GlassCard>
 
                 <div className="grid grid-cols-2 gap-4">
                   <GlassCard className="p-5 flex flex-col justify-center items-center">
-                    <Smile className="h-5 w-5 text-indigo-500/60 mb-2" strokeWidth={1.5} />
-                    <span className="text-[9px] font-medium text-foreground/30 uppercase tracking-[0.1em]">Top Catalyst</span>
-                    <span className="text-sm font-medium">Exercise</span>
+                    <Smile className="h-5 w-5 text-primary/80 mb-2" strokeWidth={1.5} />
+                    <span className="text-[9px] font-medium text-foreground/40 uppercase tracking-[0.1em]">Top Catalyst</span>
+                    <span className="text-sm font-medium text-foreground">Exercise</span>
                   </GlassCard>
                   <GlassCard className="p-5 flex flex-col justify-center items-center">
-                    <Calendar className="h-5 w-5 text-amber-500/60 mb-2" strokeWidth={1.5} />
-                    <span className="text-[9px] font-medium text-foreground/30 uppercase tracking-[0.1em]">Accuracy</span>
-                    <span className="text-sm font-medium">94%</span>
+                    <Calendar className="h-5 w-5 text-amber-500/80 mb-2" strokeWidth={1.5} />
+                    <span className="text-[9px] font-medium text-foreground/40 uppercase tracking-[0.1em]">Accuracy</span>
+                    <span className="text-sm font-medium text-foreground">94%</span>
                   </GlassCard>
                 </div>
               </div>
@@ -473,34 +466,34 @@ const AnalyticsPage = () => {
           <TabsContent value="dynamics" className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <GlassCard>
               <CardHeader>
-                <CardTitle className="text-lg font-medium">Positive Correlation</CardTitle>
+                <CardTitle className="text-lg font-medium text-foreground">Positive Correlation</CardTitle>
                 <CardDescription className="font-medium text-foreground/40 text-xs">Activities that enhance your well-being</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {activitiesData.map((act, idx) => (
                   <div key={idx} className="space-y-2">
-                    <div className="flex justify-between text-xs font-medium uppercase tracking-tighter opacity-80">
+                    <div className="flex justify-between text-xs font-medium uppercase tracking-tighter opacity-80 text-foreground">
                       <span>{act.name}</span>
-                      <span className="text-indigo-500">{act.count} logs</span>
+                      <span className="text-primary">{act.count} logs</span>
                     </div>
-                    <Progress value={act.positiveImpact * 20} className="h-1.5 bg-white/10" />
+                    <Progress value={act.positiveImpact * 20} className="h-1.5 bg-foreground/10" />
                   </div>
                 ))}
               </CardContent>
             </GlassCard>
             <GlassCard>
               <CardHeader>
-                <CardTitle className="text-lg font-medium">Stress Factors</CardTitle>
+                <CardTitle className="text-lg font-medium text-foreground">Stress Factors</CardTitle>
                 <CardDescription className="font-medium text-foreground/40 text-xs">Negative triggers to manage</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {(activitiesData.length > 2 ? activitiesData.slice(2) : activitiesData).map((trig, idx) => (
                   <div key={idx} className="space-y-2">
-                    <div className="flex justify-between text-xs font-medium uppercase tracking-tighter opacity-80">
+                    <div className="flex justify-between text-xs font-medium uppercase tracking-tighter opacity-80 text-foreground">
                       <span>{trig.name}</span>
-                      <span className="text-rose-400">Low severity</span>
+                      <span className="text-rose-500">Low severity</span>
                     </div>
-                    <Progress value={20} className="h-1.5 bg-white/10" />
+                    <Progress value={20} className="h-1.5 bg-foreground/10" />
                   </div>
                 ))}
               </CardContent>

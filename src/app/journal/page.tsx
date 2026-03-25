@@ -153,7 +153,7 @@ export default function JournalPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
           <Input
             placeholder="Search entries..."
-            className="pl-9 rounded-xl bg-white/40 border-white/20"
+            className="pl-9 rounded-xl bg-white/40 border-green-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -187,87 +187,107 @@ export default function JournalPage() {
           initial="hidden"
           animate="visible"
         >
-          {filteredEntries.map((entry) => (
-            <motion.div key={entry.id} variants={itemVariants}>
-              <Card className={cn(
-                "h-full flex flex-col border-white/20 dark:border-white/5 bg-white/40 dark:bg-black/20 backdrop-blur-sm group hover:shadow-xl transition-all duration-500 rounded-[32px] relative overflow-hidden",
-                entry.mood && getMoodColor(entry.mood).split(' ').find(c => c.startsWith('shadow-'))
+{filteredEntries.map((entry) => (
+  <motion.div key={entry.id} variants={itemVariants}>
+    <Card className={cn(
+      "h-full flex flex-col transition-all duration-500 rounded-[32px] relative overflow-hidden group",
+      // Glassmorphism lebih terang & border pakai variabel CSS
+      "border-border/50 bg-white/70 dark:bg-white/10 backdrop-blur-md", 
+      "hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-1",
+      entry.mood && getMoodColor(entry.mood).split(' ').find(c => c.startsWith('shadow-'))
+    )}>
+      
+      {/* Mood Glow Effect - Sekarang pakai warna dinamis */}
+      {entry.mood && (
+         <div className={cn(
+           "absolute -top-10 -right-10 w-24 h-24 blur-[40px] opacity-20 rounded-full", 
+           getMoodColor(entry.mood).split(' ').find(c => c.startsWith('bg-'))
+         )} />
+      )}
+
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between">
+          {/* Title pakai warna primary saat hover */}
+          <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors">
+            {entry.title}
+          </CardTitle>
+          <div className="flex items-center space-x-1">
+            {entry.isPrivate ? (
+              <Lock className="h-4 w-4 text-foreground/30" />
+            ) : (
+              <Unlock className="h-4 w-4 text-foreground/30" />
+            )}
+            {entry.mood && (
+              <div className={cn(
+                "flex items-center justify-center w-8 h-8 rounded-xl border transition-all shadow-sm", 
+                getMoodColor(entry.mood)
               )}>
-                {entry.mood && (
-                   <div className={cn("absolute -top-10 -right-10 w-24 h-24 blur-[40px] opacity-10 rounded-full", getMoodColor(entry.mood).split(' ').find(c => c.startsWith('bg-')))} />
-                )}
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg line-clamp-1 group-hover:text-[#D48C70] transition-colors">{entry.title}</CardTitle>
-                    <div className="flex items-center space-x-1">
-                      {entry.isPrivate ? (
-                        <Lock className="h-4 w-4 text-muted-foreground/40" />
-                      ) : (
-                        <Unlock className="h-4 w-4 text-muted-foreground/40" />
-                      )}
-                      {entry.mood && (
-                        <div className={cn("flex items-center justify-center w-8 h-8 rounded-xl border transition-all", getMoodColor(entry.mood))}>
-                          {getMoodIcon(entry.mood)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <CardDescription className="flex items-center text-xs font-semibold uppercase tracking-wider opacity-60">
-                    <Calendar className="mr-1.5 h-3 w-3" />
-                    {formatDate(entry.timestamp)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
-                  <p className="text-sm text-muted-foreground/80 line-clamp-3 mb-4 italic">
-                    &quot;{entry.content}&quot;
-                  </p>
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {entry.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-[10px] bg-[#D48C70]/10 text-[#D48C70] border-none font-bold uppercase">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-auto flex justify-between items-center border-t border-white/10 pt-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hover:bg-[#D48C70]/10 hover:text-[#D48C70] rounded-full px-4"
-                      onClick={() => handleViewEntry(entry)}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0 opacity-40 hover:opacity-100 transition-opacity">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-xl border-white/20 backdrop-blur-xl">
-                        <DropdownMenuItem asChild className="focus:bg-[#D48C70] focus:text-white">
-                          <Link href={`/journal/edit/${entry.id}`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedEntry(entry);
-                            setIsDeleteDialogOpen(true);
-                          }}
-                          className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+                {getMoodIcon(entry.mood)}
+              </div>
+            )}
+          </div>
+        </div>
+        <CardDescription className="flex items-center text-xs font-semibold uppercase tracking-wider opacity-60">
+          <Calendar className="mr-1.5 h-3 w-3" />
+          {formatDate(entry.timestamp)}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="flex-1 flex flex-col">
+        <p className="text-sm text-foreground/70 line-clamp-3 mb-4 italic leading-relaxed">
+          &quot;{entry.content}&quot;
+        </p>
+        
+        <div className="flex flex-wrap gap-1 mb-4">
+          {entry.tags.map((tag) => (
+            <Badge key={tag} variant="secondary" 
+              className="text-[10px] bg-primary/15 text-primary border-none font-bold uppercase tracking-tight">
+              {tag}
+            </Badge>
           ))}
+        </div>
+
+        <div className="mt-auto flex justify-between items-center border-t border-border/40 pt-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hover:bg-primary/10 hover:text-primary rounded-full px-4 transition-colors"
+            onClick={() => handleViewEntry(entry)}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            View
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0 opacity-40 hover:opacity-100 hover:text-primary">
+                <Edit className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-2xl border-border bg-background/80 backdrop-blur-xl">
+              <DropdownMenuItem asChild className="focus:bg-primary focus:text-primary-foreground">
+                <Link href={`/journal/edit/${entry.id}`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedEntry(entry);
+                  setIsDeleteDialogOpen(true);
+                }}
+                className="text-destructive focus:bg-primary focus:text-white"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+  </motion.div>
+))}
         </motion.div>
       ) : (
         <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 italic">

@@ -1,3 +1,3 @@
-font ketika ubah thema itu harus sesuai enak di lihat di dalam tool bar (done)
-perbaiki navbar ketika di scroll dia ga ngikut (done)
-tambahkan readme biar juri baca khussunya cara pemakaian web ini (done)
+tombol ekspor yg di stats blm bekerja export csv atau excel 
+data ga kesimpan ketika logout apa krna ini lokal? harusnya engga sih krna kan terhubung lgsg ke firebase farisya
+hilangin emoji di readme

@@ -41,27 +41,57 @@ html {
     --border: 217.2 32.6% 17.5%;
   }
 
-  /* --- HIGH CONTRAST MODE (Direct & Surgical) --- */
-  [data-high-contrast="true"] {
-    --background: 0 0% 0% !important;
-    --foreground: 60 100% 50% !important;
-    background-color: black !important;
-    color: #ffff00 !important;
-  }
+/* --- HIGH CONTRAST MODE (Surgical & Clean) --- */
+[data-high-contrast="true"] {
+  /* Timpa variabel utama agar komponen Shadcn (Card, Input, dll) otomatis dapet warnanya */
+  --background: 0 0% 0% !important;
+  --foreground: 60 100% 50% !important;
+  --border: 60 100% 50% !important;
+  --muted: 0 0% 0% !important;
+  --muted-foreground: 60 100% 50% !important;
+  --input: 60 100% 50% !important;
+  --primary: 60 100% 50% !important;
+  --primary-foreground: 0 0% 0% !important;
 
-  /* Core Rule: Black backgrounds and yellow everything for ALL elements and pseudo-elements */
-  [data-high-contrast="true"] *,
-  [data-high-contrast="true"] *::before,
-  [data-high-contrast="true"] *::after {
-    background-color: black !important;
-    color: #ffff00 !important;
-    border-color: #ffff00 !important;
-    box-shadow: none !important;
-    text-shadow: none !important;
-    filter: none !important;
-    backdrop-filter: none !important;
-    outline-color: #ffff00 !important;
-  }
+  background-color: black !important;
+  color: #ffff00 !important;
+}
+
+/* FIX PLACEHOLDER: Paksa warna & opacity pas aktif */
+[data-high-contrast="true"] ::placeholder {
+  color: #ffff00 !important;
+  opacity: 1 !important;
+}
+
+/* KEMBALIKAN KE SEMULA: Pastiin saat atribut hilang, placeholder balik normal */
+/* Kita tembak langsung ke selector input/textarea biar kuat */
+input::placeholder, 
+textarea::placeholder {
+  color: hsl(var(--foreground) / 0.5); 
+  opacity: 1;
+}
+
+/* Untuk elemen yang bukan background (Text, Border, Icons) */
+[data-high-contrast="true"] *:not(button):not([role="button"]) {
+  /* Biarkan background-color mengalir dari variabel --background-nya komponen */
+  color: #ffff00 !important;
+  border-color: #ffff00 !important;
+  outline-color: #ffff00 !important;
+}
+
+/* Tombol tetap Inverted (Hitam di atas Kuning) */
+[data-high-contrast="true"] button, 
+[data-high-contrast="true"] [role="button"] {
+  background-color: #ffff00 !important;
+  color: black !important;
+  font-weight: 900 !important;
+}
+
+/* Pastiin icon di dalem tombol juga ikut hitam */
+[data-high-contrast="true"] button svg {
+  stroke: black !important;
+  fill: none !important;
+}
 
   /* Interactive Elements: Invert colors for clear visibility of actions */
   [data-high-contrast="true"] button, 
