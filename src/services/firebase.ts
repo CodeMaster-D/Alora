@@ -16,6 +16,8 @@ import {
   signInWithEmailAndPassword, 
   signOut,
   updateProfile as updateAuthProfile,
+  updatePassword,
+  deleteUser,
   GoogleAuthProvider,
   signInWithPopup
 } from "firebase/auth";
@@ -29,7 +31,6 @@ import {
   deleteDoc, 
   query, 
   where,
-  orderBy,
   Timestamp,
   addDoc
 } from "firebase/firestore";
@@ -48,11 +49,15 @@ export interface MoodStats {
   factorCounts: Record<string, number>;
 }
 
-// Helper to handle dates
-const parseDate = (date: any): Date => {
+// Helper to handle Firestore Timestamp, Date objects, or date strings
+const parseDate = (date: Timestamp | Date | string | null | undefined): Date => {
+  if (!date) return new Date();
   if (date instanceof Timestamp) return date.toDate();
-  if (date?.toDate) return date.toDate();
-  return new Date(date);
+  if (date instanceof Date) return date;
+  // Duck-type check for Firestore Timestamp-like objects (e.g. serialised from SSR)
+  const maybe = date as unknown as { toDate?: () => Date };
+  if (typeof maybe.toDate === 'function') return maybe.toDate();
+  return new Date(date as string);
 };
 
 // --- AUTH SERVICE ---
@@ -179,9 +184,43 @@ export const authService = {
   updatePreferences: async (userId: string, preferences: Partial<UserPreferences>): Promise<ApiResponse<UserPreferences>> => {
     try {
       const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, { preferences });
+      
+      // Use dot notation to update specific nested fields without overwriting the whole preferences map
+      const updates: any = {};
+      Object.entries(preferences).forEach(([key, value]) => {
+        updates[`preferences.${key}`] = value;
+      });
+      
+      await updateDoc(userRef, updates);
       const updated = await getDoc(userRef);
       return { success: true, data: (updated.data() as User).preferences };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  updatePassword: async (newPassword: string): Promise<ApiResponse<void>> => {
+    try {
+      const fbUser = auth.currentUser;
+      if (!fbUser) throw new Error("No user logged in");
+      await updatePassword(fbUser, newPassword);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  deleteAccount: async (): Promise<ApiResponse<void>> => {
+    try {
+      const fbUser = auth.currentUser;
+      if (!fbUser) throw new Error("No user logged in");
+      
+      // Delete user doc first (security rules should allow it if auth matching)
+      await deleteDoc(doc(db, "users", fbUser.uid));
+      
+      // Then delete auth account
+      await deleteUser(fbUser);
+      return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -215,7 +254,7 @@ export const authService = {
 export const moodService = {
   getMoodEntries: async (userId: string): Promise<ApiResponse<MoodEntry[]>> => {
     try {
-      const q = query(collection(db, "moods"), where("userId", "==", userId), orderBy("timestamp", "desc"));
+      const q = query(collection(db, "moods"), where("userId", "==", userId));
       const querySnapshot = await getDocs(q);
       const entries: MoodEntry[] = [];
       querySnapshot.forEach((docSnap) => {
@@ -226,7 +265,11 @@ export const moodService = {
           timestamp: parseDate(data.timestamp) 
         } as MoodEntry);
       });
-      return { success: true, data: entries };
+      // Sort client-side and ensure it's a valid Date for sorting
+      return { 
+        success: true, 
+        data: entries.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()) 
+      };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -278,21 +321,25 @@ export const moodService = {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      const q = query(
-        collection(db, "moods"), 
-        where("userId", "==", userId),
-        where("timestamp", ">=", startDate)
-      );
-      
+      // Only filter by userId to avoid composite index requirement;
+      // date range is applied client-side.
+      const q = query(collection(db, "moods"), where("userId", "==", userId));
       const querySnapshot = await getDocs(q);
       const entries: MoodEntry[] = [];
+
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        entries.push({ ...data, timestamp: parseDate(data.timestamp) } as MoodEntry);
+        const ts = parseDate(data.timestamp);
+        // Client-side date range filter
+        if (ts >= startDate) {
+          entries.push({ ...data, id: docSnap.id, timestamp: ts } as MoodEntry);
+        }
       });
 
       const totalEntries = entries.length;
-      const avgMood = totalEntries > 0 ? entries.reduce((s, e) => s + e.mood, 0) / totalEntries : 0;
+      const avgMood = totalEntries > 0
+        ? entries.reduce((s, e) => s + e.mood, 0) / totalEntries
+        : 0;
       
       const moodCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
       const factorCounts: Record<string, number> = {};
@@ -300,8 +347,7 @@ export const moodService = {
       entries.forEach(e => {
         const val = e.mood as keyof typeof moodCounts;
         if (moodCounts[val] !== undefined) moodCounts[val]++;
-        
-        e.factors.forEach(f => {
+        e.factors?.forEach(f => {
           factorCounts[f] = (factorCounts[f] || 0) + 1;
         });
       });
@@ -320,7 +366,7 @@ export const moodService = {
 export const journalService = {
   getJournalEntries: async (userId: string): Promise<ApiResponse<JournalEntry[]>> => {
     try {
-      const q = query(collection(db, "journals"), where("userId", "==", userId), orderBy("updatedAt", "desc"));
+      const q = query(collection(db, "journals"), where("userId", "==", userId));
       const querySnapshot = await getDocs(q);
       const entries: JournalEntry[] = [];
       querySnapshot.forEach((d) => {
@@ -332,7 +378,10 @@ export const journalService = {
           updatedAt: parseDate(data.updatedAt)
         } as JournalEntry);
       });
-      return { success: true, data: entries };
+      return { 
+        success: true, 
+        data: entries.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()) 
+      };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -470,16 +519,22 @@ export const breathingService = {
     }
   },
 
-  getBreathingSessions: async (userId: string): Promise<ApiResponse<any[]>> => {
+  getBreathingSessions: async (userId: string): Promise<ApiResponse<{ id: string; userId: string; exerciseId: string; timestamp: Date }[]>> => {
     try {
       const q = query(
         collection(db, "breathing_sessions"),
-        where("userId", "==", userId),
-        orderBy("timestamp", "desc")
+        where("userId", "==", userId)
       );
       const querySnapshot = await getDocs(q);
-      const sessions = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      return { success: true, data: sessions };
+      const sessions = querySnapshot.docs.map(d => ({
+        ...d.data(),
+        id: d.id,
+        timestamp: parseDate(d.data().timestamp)
+      })) as { id: string; userId: string; exerciseId: string; timestamp: Date }[];
+      return { 
+        success: true, 
+        data: sessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()) 
+      };
     } catch (error: any) {
       return { success: false, error: error.message };
     }

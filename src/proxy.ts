@@ -24,8 +24,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/register', request.url));
   }
 
-  // 1. Jika sudah login tapi mau ke landing/login/register -> lempar ke dashboard
-  if (isAuthenticated && (isAuthPage || pathname === '/')) {
+  // 1. Jika sudah login tapi mau ke login/register -> lempar ke dashboard
+  if (isAuthenticated && isAuthPage) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

@@ -35,7 +35,7 @@ export async function updateUserProfile(userId: string, data: any) {
   const validated = UserProfileSchema.parse(data);
   
   // Example checking if birthDate comes in as string to convert to Timestamp
-  let profileUpdate = { ...validated };
+  const profileUpdate = { ...validated };
   if (validated.dateOfBirth) {
     (profileUpdate as any).dateOfBirth = admin.firestore.Timestamp.fromDate(new Date(validated.dateOfBirth));
   }

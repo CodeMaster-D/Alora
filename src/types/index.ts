@@ -13,7 +13,7 @@ export interface User {
 export interface UserPreferences {
   theme: "light" | "dark" | "system";
   highContrast: boolean;
-  fontSize: "small" | "medium" | "large";
+  fontSize: "small" | "medium" | "large" | "extra-large";
   fontFamily: "default" | "dyslexic" | "hyperlegible";
   reducedMotion: boolean;
   notifications: boolean;

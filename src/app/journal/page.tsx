@@ -32,8 +32,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { JournalEntry } from "@/types";
 import { useAuthStore } from "@/store/authStore";
 import { useJournalStore } from "@/store/journalStore";
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
-import { LoadingSpinner } from "@/components/ui/loading-spinner"; // Import LoadingSpinner
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export default function JournalPage() {
@@ -88,14 +87,14 @@ export default function JournalPage() {
   };
 
   const getMoodColor = (mood?: number) => {
-    if (!mood) return "text-gray-500";
+    if (!mood) return "text-muted-foreground border-border bg-muted/5";
     switch (mood) {
-      case 1: return "text-red-500";
-      case 2: return "text-orange-500";
-      case 3: return "text-yellow-500";
-      case 4: return "text-green-500";
-      case 5: return "text-emerald-500";
-      default: return "text-gray-500";
+      case 1: return "text-blue-500 border-blue-500/20 bg-blue-500/5 shadow-blue-500/10";
+      case 2: return "text-indigo-500 border-indigo-500/20 bg-indigo-500/5 shadow-indigo-500/10";
+      case 3: return "text-amber-500 border-amber-500/20 bg-amber-500/5 shadow-amber-500/10";
+      case 4: return "text-green-500 border-green-500/20 bg-green-500/5 shadow-green-500/10";
+      case 5: return "text-emerald-500 border-emerald-500/20 bg-emerald-500/5 shadow-emerald-500/10";
+      default: return "text-muted-foreground border-border bg-muted/5";
     }
   };
 
@@ -190,7 +189,13 @@ export default function JournalPage() {
         >
           {filteredEntries.map((entry) => (
             <motion.div key={entry.id} variants={itemVariants}>
-              <Card className="h-full flex flex-col border-white/20 bg-white/40 backdrop-blur-sm group hover:shadow-lg transition-all duration-300 rounded-3xl">
+              <Card className={cn(
+                "h-full flex flex-col border-white/20 dark:border-white/5 bg-white/40 dark:bg-black/20 backdrop-blur-sm group hover:shadow-xl transition-all duration-500 rounded-[32px] relative overflow-hidden",
+                entry.mood && getMoodColor(entry.mood).split(' ').find(c => c.startsWith('shadow-'))
+              )}>
+                {entry.mood && (
+                   <div className={cn("absolute -top-10 -right-10 w-24 h-24 blur-[40px] opacity-10 rounded-full", getMoodColor(entry.mood).split(' ').find(c => c.startsWith('bg-')))} />
+                )}
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg line-clamp-1 group-hover:text-[#D48C70] transition-colors">{entry.title}</CardTitle>
@@ -201,7 +206,7 @@ export default function JournalPage() {
                         <Unlock className="h-4 w-4 text-muted-foreground/40" />
                       )}
                       {entry.mood && (
-                        <div className={cn(getMoodColor(entry.mood), "opacity-80")}>
+                        <div className={cn("flex items-center justify-center w-8 h-8 rounded-xl border transition-all", getMoodColor(entry.mood))}>
                           {getMoodIcon(entry.mood)}
                         </div>
                       )}

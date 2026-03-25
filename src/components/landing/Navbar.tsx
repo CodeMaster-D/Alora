@@ -12,7 +12,6 @@ import {
   X, 
   ArrowRight, 
   LayoutDashboard, 
-  Sparkles,
   ChevronRight
 } from "lucide-react";
 
@@ -94,10 +93,10 @@ export function Navbar() {
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
         className={cn(
           "mx-auto max-w-7xl h-16 transition-all duration-500 pointer-events-auto",
-          "flex items-center justify-between px-6 rounded-[2rem]",
+          "flex items-center justify-between px-6 rounded-[2rem] border",
           isScrolled 
-            ? "bg-card/90 dark:bg-card/80 backdrop-blur-xl border-white/20 dark:border-white/10 shadow-xl scale-[0.98]" 
-            : "bg-card/30 backdrop-blur-xl border-white/10 dark:border-white/5"
+            ? "bg-card/95 dark:bg-card/90 backdrop-blur-2xl border-white/20 dark:border-white/10 shadow-2xl shadow-black/5 scale-[0.98]" 
+            : "bg-card/40 backdrop-blur-xl border-white/10 dark:border-white/5"
         )}
       >
         {/* Logo Section */}

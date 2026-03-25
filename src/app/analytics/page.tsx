@@ -33,7 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/authStore";
-import { firebaseService, MoodStats } from "@/services/firebase";
+import { firebaseService } from "@/services/firebase";
+import { cn } from "@/lib/utils";
 
 // --- Types & Interfaces ---
 interface MoodData {
@@ -54,6 +55,7 @@ interface AnalyticsData {
   };
   moodCounts: Record<number, number>;
   factorCounts: Record<string, number>;
+  weekdayAvgs: { day: string; mood: number }[];
 }
 
 const MOOD_COLORS: Record<number, string> = {
@@ -70,7 +72,10 @@ const MOOD_LABELS: Record<number, string> = {
 
 // --- Custom Components ---
 const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
-  <Card className={`bg-white/40 dark:bg-black/10 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[32px] overflow-hidden transition-all duration-300 ${className}`}>
+  <Card className={cn(
+    "bg-white/40 dark:bg-zinc-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-md rounded-[32px] overflow-hidden transition-all duration-500",
+    className
+  )}>
     {children}
   </Card>
 );
@@ -82,19 +87,7 @@ const AnalyticsPage = () => {
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
-  // 1. Set mounted ke true setelah komponen masuk ke browser
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // 2. Fetch data tetap jalan di background
-  useEffect(() => {
-    if (mounted && user) {
-      fetchAnalyticsData();
-    }
-  }, [timeRange, mounted, user]);
-
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = React.useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
     try {
@@ -108,31 +101,69 @@ const AnalyticsPage = () => {
         const stats = statsRes.data;
         const entries = entriesRes.data;
 
-        // Map entries (subset for range)
+        // Filter and map entries for range
+        const now = new Date();
         const rangeDate = new Date();
-        rangeDate.setDate(rangeDate.getDate() - days);
+        rangeDate.setDate(now.getDate() - days);
         
-        const logs: MoodData[] = entries
-          .filter(e => new Date(e.timestamp) >= rangeDate)
+        const filteredEntries = entries.filter(e => {
+          const d = new Date(e.timestamp);
+          return d >= rangeDate && d <= now;
+        });
+
+        const logs: MoodData[] = filteredEntries
           .map(e => ({
             date: new Date(e.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
             mood: e.mood,
-            emotion: 'happy', // Placeholder if not in Firestore yet
+            emotion: e.mood >= 4 ? 'happy' : e.mood <= 2 ? 'sad' : 'neutral',
             triggers: e.factors || [],
             activities: [],
           }))
           .reverse();
 
+        // Calculate improvement (comparing last half vs first half of logs)
+        let improvement = 0;
+        if (logs.length >= 2) {
+          const mid = Math.floor(logs.length / 2);
+          const firstHalf = logs.slice(0, mid);
+          const secondHalf = logs.slice(mid);
+          const avg1 = firstHalf.reduce((s, x) => s + x.mood, 0) / firstHalf.length;
+          const avg2 = secondHalf.reduce((s, x) => s + x.mood, 0) / secondHalf.length;
+          improvement = avg1 > 0 ? Math.round(((avg2 - avg1) / avg1) * 100) : 0;
+        }
+
+        // Calculate Weekly Patterns (Avg per Day of Week)
+        const weekdayMoods: Record<number, number[]> = {0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[]};
+        filteredEntries.forEach(e => {
+          const day = new Date(e.timestamp).getDay();
+          weekdayMoods[day].push(e.mood);
+        });
+
+        const weekdayAvgs = Object.entries(weekdayMoods).map(([day, moods]) => ({
+          day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][parseInt(day)],
+          mood: moods.length > 0 ? Math.round((moods.reduce((s, m) => s + m, 0) / moods.length) * 10) / 10 : 0
+        }));
+
+        // Best/Worst Day
+        const validDays = weekdayAvgs.filter(d => d.mood > 0);
+        let bestDay = "N/A";
+        let worstDay = "N/A";
+        if (validDays.length > 0) {
+          bestDay = [...validDays].sort((a, b) => b.mood - a.mood)[0].day;
+          worstDay = [...validDays].sort((a, b) => a.mood - b.mood)[0].day;
+        }
+
         setAnalyticsData({
           logs,
           patterns: {
-            bestDay: "Friday", // Placeholder logic
-            worstDay: "Monday", 
+            bestDay,
+            worstDay,
             averageMood: stats.avgMood,
-            improvement: 0, 
+            improvement,
           },
           moodCounts: stats.moodCounts,
           factorCounts: stats.factorCounts,
+          weekdayAvgs: weekdayAvgs
         });
       }
     } catch (error) {
@@ -140,7 +171,19 @@ const AnalyticsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, timeRange]);
+
+  // 1. Set mounted ke true setelah komponen masuk ke browser
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 2. Fetch data tetap jalan di background
+  useEffect(() => {
+    if (mounted && user) {
+      fetchAnalyticsData();
+    }
+  }, [timeRange, mounted, user, fetchAnalyticsData]);
 
   const currentData = useMemo(() => {
     return analyticsData?.logs || [];
@@ -389,10 +432,7 @@ const AnalyticsPage = () => {
                 </CardHeader>
                 <CardContent className="h-[300px] pt-4">
                   <ResponsiveContainer width="99%" height="100%" minHeight={250}>
-                    <BarChart data={[
-                      { day: 'Mon', mood: 3.2 }, { day: 'Tue', mood: 3.5 }, { day: 'Wed', mood: 3.8 },
-                      { day: 'Thu', mood: 3.6 }, { day: 'Fri', mood: 4.1 }, { day: 'Sat', mood: 3.9 }, { day: 'Sun', mood: 3.7 },
-                    ]}>
+                    <BarChart data={analyticsData.weekdayAvgs}>
                       <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.5 }} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.1)' }} />
                       <Bar dataKey="mood" fill="#6366f1" radius={[12, 12, 12, 12]} barSize={28} />

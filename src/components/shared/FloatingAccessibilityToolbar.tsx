@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { 
   Contrast, Accessibility, Volume2, VolumeX, 
-  RotateCcw, Zap, ZapOff, X, Type, Sun, Moon, Monitor, Globe
+  RotateCcw, Zap, ZapOff, X, Sun, Moon, Monitor
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -28,21 +28,24 @@ interface FontOption {
   className: string;
 }
 
+
+
+
 const FONT_OPTIONS: FontOption[] = [
-  { id: 'default', name: 'Inter Standard', sub: 'Modern & Bersih', className: '' },
-  { id: 'dyslexic', name: 'OpenDyslexic', sub: 'Ramah Disleksia', className: 'font-dyslexic' },
-  { id: 'hyperlegible', name: 'Atkinson Hyperlegible', sub: 'Fokus Keterbacaan', className: 'font-hyper' }
+  { id: 'default', name: 'Inter Standard', sub: 'Modern & Clean', className: '' },
+  { id: 'dyslexic', name: 'OpenDyslexic', sub: 'Dyslexia Friendly', className: 'font-dyslexic' },
+  { id: 'hyperlegible', name: 'Atkinson Hyperlegible', sub: 'Readability Focused', className: 'font-hyper' }
 ];
 
 const THEME_OPTIONS = [
   { id: 'system' as ThemeType, label: 'Auto', icon: Monitor },
-  { id: 'light' as ThemeType, label: 'Terang', icon: Sun },
-  { id: 'dark' as ThemeType, label: 'Gelap', icon: Moon },
+  { id: 'light' as ThemeType, label: 'Light', icon: Sun },
+  { id: 'dark' as ThemeType, label: 'Dark', icon: Moon },
 ];
 
 const LANGUAGE_OPTIONS = [
-  { id: 'id-ID', label: 'Indonesia', flag: '🇮🇩' },
   { id: 'en-US', label: 'English', flag: '🇺🇸' },
+  { id: 'id-ID', label: 'Indonesia', flag: '🇮🇩' },
 ];
 
 export function FloatingAccessibilityToolbar() {
@@ -68,11 +71,12 @@ export function FloatingAccessibilityToolbar() {
     };
   }, [isOpen]);
 
-  // Slider value mapping: 0=small, 1=medium, 2=large
+  // Slider value mapping: 0=small, 1=medium, 2=large, 3=extra-large
   const getSliderValue = () => {
     switch (s.fontSize) {
       case "small": return [0];
       case "large": return [2];
+      case "extra-large": return [3];
       default: return [1];
     }
   };
@@ -81,14 +85,16 @@ export function FloatingAccessibilityToolbar() {
     const val = value[0];
     if (val === 0) s.setFontSize("small");
     else if (val === 2) s.setFontSize("large");
+    else if (val === 3) s.setFontSize("extra-large");
     else s.setFontSize("medium");
   };
 
   const getFontSizeLabel = () => {
     switch (s.fontSize) {
-      case "small": return "Kecil";
-      case "large": return "Besar";
-      default: return "Sedang";
+      case "small": return "Small";
+      case "large": return "Large";
+      case "extra-large": return "Huge";
+      default: return "Medium";
     }
   };
 
@@ -153,8 +159,8 @@ export function FloatingAccessibilityToolbar() {
                     <Accessibility className="h-6 w-6 text-primary" />
                   </motion.div>
                   <div>
-                    <h3 className="text-lg tracking-tight font-normal">Aksesibilitas</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-normal">Kustomisasi Pengalaman</p>
+                    <h3 className="text-lg tracking-tight font-normal">Accessibility</h3>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-normal">Customize Experience</p>
                   </div>
                 </div>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
@@ -175,7 +181,7 @@ export function FloatingAccessibilityToolbar() {
                 >
                   {/* Theme Selection */}
                   <div className="space-y-2">
-                    <label className="text-[11px] font-normal text-muted-foreground uppercase ml-1">Visual Tema</label>
+                    <label className="text-[11px] font-normal text-muted-foreground uppercase ml-1">Theme</label>
                     <div className="flex flex-col gap-1">
                       {THEME_OPTIONS.map((theme) => {
                         const Icon = theme.icon;
@@ -194,7 +200,7 @@ export function FloatingAccessibilityToolbar() {
                             whileTap={{ scale: 0.98 }}
                           >
                             <Icon className="h-4 w-4" />
-                            <span className="font-normal">{theme.label}</span>
+                            <span className="font-normal">{theme.label === 'Terang' ? 'Light' : theme.label === 'Gelap' ? 'Dark' : theme.label}</span>
                           </motion.button>
                         );
                       })}
@@ -203,7 +209,7 @@ export function FloatingAccessibilityToolbar() {
 
                   {/* Language Selection */}
                   <div className="space-y-2">
-                    <label className="text-[11px] font-normal text-muted-foreground uppercase ml-1">Vokal Bahasa</label>
+                    <label className="text-[11px] font-normal text-muted-foreground uppercase ml-1">Language</label>
                     <div className="flex flex-col gap-1">
                       {LANGUAGE_OPTIONS.map((lang) => {
                         const isSelected = s.language === lang.id;
@@ -236,7 +242,7 @@ export function FloatingAccessibilityToolbar() {
                   transition={{ delay: 0.2 }}
                   className="space-y-2"
                 >
-                  <span className="text-[11px] font-normal text-muted-foreground uppercase ml-1">Preferensi Cepat</span>
+                   <span className="text-[11px] font-normal text-muted-foreground uppercase ml-1">Quick Preferences</span>
                   <div className="bg-muted/20 rounded-[2rem] p-2 border border-border/40 space-y-1">
                     
                     {/* High Contrast */}
@@ -252,13 +258,13 @@ export function FloatingAccessibilityToolbar() {
                             <Contrast className="h-5 w-5" />
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-sm font-normal">Kontras Tinggi</span>
-                            <span className="text-[10px] text-muted-foreground font-normal">Tingkatkan visibilitas teks</span>
+                            <span className="text-sm font-normal">High Contrast</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">Enhance text visibility</span>
                           </div>
                         </div>
                         <Switch checked={s.highContrast} className="pointer-events-none" />
                       </motion.div>,
-                      "Mengaktifkan warna kontras tinggi untuk keterbacaan maksimal",
+                      "Enable high contrast colors for maximum readability",
                       "high-contrast"
                     )}
 
@@ -275,13 +281,13 @@ export function FloatingAccessibilityToolbar() {
                             {s.reducedMotion ? <ZapOff className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-sm font-normal">Matikan Animasi</span>
-                            <span className="text-[10px] text-muted-foreground font-normal">Kurangi gerakan layar</span>
+                            <span className="text-sm font-normal">Reduce Motion</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">Minimize screen movement</span>
                           </div>
                         </div>
                         <Switch checked={s.reducedMotion} className="pointer-events-none" />
                       </motion.div>,
-                      "Menghilangkan efek animasi transisi di seluruh aplikasi",
+                      "Remove animation transition effects throughout the app",
                       "reduced-motion"
                     )}
 
@@ -298,13 +304,13 @@ export function FloatingAccessibilityToolbar() {
                             {s.screenReader ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-sm font-normal">Asisten Suara</span>
-                            <span className="text-[10px] text-muted-foreground font-normal">Bacakan elemen yang aktif</span>
+                            <span className="text-sm font-normal">Screen Reader</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">Read active elements aloud</span>
                           </div>
                         </div>
                         <Switch checked={s.screenReader} className="pointer-events-none" />
                       </motion.div>,
-                      "Mengaktifkan narasi suara untuk membantu navigasi",
+                      "Enable voice narration to assist with navigation",
                       "screen-reader"
                     )}
                   </div>
@@ -317,8 +323,8 @@ export function FloatingAccessibilityToolbar() {
                   transition={{ delay: 0.25 }}
                   className="space-y-3 font-normal"
                 >
-                  <div className="flex items-center justify-between ml-1">
-                    <span className="text-[11px] font-normal text-muted-foreground uppercase">Skala Tipografi</span>
+                   <div className="flex items-center justify-between ml-1">
+                    <span className="text-[11px] font-normal text-muted-foreground uppercase">Typography Scale</span>
                     <motion.span 
                       key={s.fontSize}
                       initial={{ opacity: 0, y: -5 }}
@@ -332,14 +338,15 @@ export function FloatingAccessibilityToolbar() {
                     <Slider
                       value={getSliderValue()}
                       onValueChange={handleSliderChange}
-                      max={2}
+                      max={3}
                       step={1}
                       className="w-full"
                     />
                     <div className="flex justify-between mt-2 text-[10px] text-muted-foreground font-normal px-1">
-                      <span>A</span>
+                       <span>A</span>
                       <span className="text-base">A</span>
                       <span className="text-lg">A</span>
+                      <span className="text-xl">A</span>
                     </div>
                   </div>
                 </motion.div>
@@ -351,7 +358,7 @@ export function FloatingAccessibilityToolbar() {
                   transition={{ delay: 0.3 }}
                   className="space-y-3 pb-4"
                 >
-                  <span className="text-[11px] font-normal text-muted-foreground uppercase ml-1">Karakter Huruf</span>
+                    <span className="text-[11px] font-normal text-muted-foreground uppercase ml-1">Font Family</span>
                   <div className="grid grid-cols-1 gap-2">
                     {FONT_OPTIONS.map((f, index) => (
                       <motion.button
@@ -391,13 +398,13 @@ export function FloatingAccessibilityToolbar() {
                   transition={{ delay: 0.4 }}
                 >
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button 
+                     <Button 
                       variant="outline"
                       className="w-full h-12 rounded-2xl text-xs font-normal border-border/50 hover:border-destructive/50 hover:bg-destructive/5 hover:text-destructive transition-all"
                       onClick={() => s.resetSettings()}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
-                      Reset ke Pengaturan Awal
+                      Reset to Default Settings
                     </Button>
                   </motion.div>
                 </motion.div>
@@ -431,9 +438,9 @@ export function FloatingAccessibilityToolbar() {
               </motion.div>
             </Button>
           </motion.div>,
-          isOpen ? "Tutup Menu" : "Aksesibilitas",
+           isOpen ? "Close Menu" : "Accessibility",
           "main-trigger",
-          true // Argumen baru yang nge-bypass syarat `isOpen`
+          true // Bypass isOpen condition for main trigger
         )}
       </div>
     </TooltipProvider>

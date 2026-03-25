@@ -41,7 +41,7 @@ html {
     --border: 217.2 32.6% 17.5%;
   }
 
-  /* --- HIGH CONTRAST MODE (Fix Icon & Button) --- */
+  /* --- HIGH CONTRAST MODE (Direct & Surgical) --- */
   [data-high-contrast="true"] {
     --background: 0 0% 0% !important;
     --foreground: 60 100% 50% !important;
@@ -49,28 +49,106 @@ html {
     color: #ffff00 !important;
   }
 
-  [data-high-contrast="true"] * {
-    background-color: transparent !important;
+  /* Core Rule: Black backgrounds and yellow everything for ALL elements and pseudo-elements */
+  [data-high-contrast="true"] *,
+  [data-high-contrast="true"] *::before,
+  [data-high-contrast="true"] *::after {
+    background-color: black !important;
     color: #ffff00 !important;
     border-color: #ffff00 !important;
     box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    outline-color: #ffff00 !important;
   }
 
-  /* Fix Icon Sidebar & Lucide agar kelihatan */
-  [data-high-contrast="true"] svg {
-    stroke: #ffff00 !important;
-  }
-
+  /* Interactive Elements: Invert colors for clear visibility of actions */
   [data-high-contrast="true"] button, 
-  [data-high-contrast="true"] [role="button"] {
+  [data-high-contrast="true"] [role="button"],
+  [data-high-contrast="true"] [role="tab"][data-state="active"],
+  [data-high-contrast="true"] .bg-primary,
+  [data-high-contrast="true"] .active-tab {
     background-color: #ffff00 !important;
     color: black !important;
-    border: 2px solid white !important;
-    font-weight: 800 !important;
+    border: 3px solid #ffff00 !important;
+    font-weight: 900 !important;
+    cursor: pointer;
+  }
+
+  /* Children of interactive elements must be black on yellow */
+  [data-high-contrast="true"] button *,
+  [data-high-contrast="true"] [role="button"] *,
+  [data-high-contrast="true"] [role="tab"][data-state="active"] * {
+    color: black !important;
+    background-color: transparent !important;
+    -webkit-text-fill-color: black !important;
+  }
+
+  /* Focus & Focus-Visible: Extremely high visibility */
+  [data-high-contrast="true"] *:focus-visible {
+    outline: 6px solid #ffff00 !important;
+    outline-offset: 4px !important;
+    z-index: 9999;
+  }
+
+  [data-high-contrast="true"] button:hover,
+  [data-high-contrast="true"] [role="button"]:hover {
+    outline: 6px solid #ffff00 !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Form Controls */
+  [data-high-contrast="true"] input, 
+  [data-high-contrast="true"] textarea, 
+  [data-high-contrast="true"] select {
+    background-color: black !important;
+    color: #ffff00 !important;
+    border: 3px solid #ffff00 !important;
+    border-radius: 0 !important; /* Sharper geometric look for accessibility */
+  }
+
+  /* Icons: No complex colors, just yellow strokes */
+  [data-high-contrast="true"] svg {
+    stroke: #ffff00 !important;
+    fill: none !important;
+    stroke-width: 2.5px !important;
   }
   
-  [data-high-contrast="true"] button svg {
+  /* Icons inside active regions must be black */
+  [data-high-contrast="true"] button svg,
+  [data-high-contrast="true"] [role="button"] svg,
+  [data-high-contrast="true"] [role="tab"][data-state="active"] svg {
     stroke: black !important;
+  }
+
+  /* Overlays & Tooltips: Solid barriers */
+  [data-high-contrast="true"] [role="dialog"],
+  [data-high-contrast="true"] [role="menu"],
+  [data-high-contrast="true"] .recharts-tooltip-wrapper {
+    background-color: black !important;
+    border: 4px solid #ffff00 !important;
+    opacity: 1 !important;
+  }
+
+  /* Charts: Force high visibility lines and dots */
+  [data-high-contrast="true"] .recharts-cartesian-grid-horizontal line,
+  [data-high-contrast="true"] .recharts-cartesian-grid-vertical line {
+    stroke: #ffff00 !important;
+    stroke-opacity: 0.8 !important;
+    stroke-dasharray: 0 !important;
+  }
+
+  [data-high-contrast="true"] .recharts-bar-rectangle path {
+    fill: #ffff00 !important;
+    stroke: black !important;
+  }
+
+  [data-high-contrast="true"] .recharts-dot,
+  [data-high-contrast="true"] .recharts-line-dot {
+    fill: #ffff00 !important;
+    stroke: black !important;
+    r: 6 !important;
   }
 
   /* --- REDUCE MOTION --- */

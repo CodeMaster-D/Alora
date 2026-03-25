@@ -27,26 +27,7 @@ import { useAccessibilityStore } from "@/store/useAccessbilityStore";
 import { firebaseService } from "@/services/firebase";
 import { toast } from "sonner";
 
-interface UserSettings {
-  theme: 'light' | 'dark' | 'high-contrast';
-  fontSize: 'small' | 'medium' | 'large';
-  notifications: {
-    moodReminders: boolean;
-    journalReminders: boolean;
-    breathingReminders: boolean;
-    achievementAlerts: boolean;
-  };
-  accessibility: {
-    highContrast: boolean;
-    reducedMotion: boolean;
-    screenReader: boolean;
-    dyslexicFont: boolean;
-  };
-  privacy: {
-    dataSharing: boolean;
-    analytics: boolean;
-  };
-}
+
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore();
@@ -98,9 +79,9 @@ export default function ProfilePage() {
       } else {
         throw new Error("Failed to update profile");
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
       toast.error("Update Failed", {
-        description: error.message || "Could not update profile.",
+        description: err instanceof Error ? err.message : "Could not update profile.",
       });
     } finally {
       setIsLoading(false);
@@ -117,8 +98,6 @@ export default function ProfilePage() {
         highContrast,
         reducedMotion,
         fontFamily,
-        notifications: true,
-        reminderTime: user.preferences?.reminderTime || "09:00",
       });
       
       if (result.success) {
@@ -128,27 +107,107 @@ export default function ProfilePage() {
       } else {
         throw new Error(result.error);
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
       toast.error("Save Failed", {
-        description: error.message || "Failed to sync preferences.",
+        description: err instanceof Error ? err.message : "Failed to sync preferences.",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleExportData = () => {
-    // Export user data
-    toast.info("Export Started", {
-      description: "Your data is being prepared for download",
+  const handleExportData = async () => {
+    if (!user) return;
+    toast.info("Preparing Export", {
+      description: "Fetching all your data from the cloud...",
     });
+
+    try {
+      const [moods, journals, breathing] = await Promise.all([
+        firebaseService.mood.getMoodEntries(user.id),
+        firebaseService.journal.getJournalEntries(user.id),
+        firebaseService.breathing.getBreathingSessions(user.id)
+      ]);
+
+      const exportData = {
+        profile: {
+          displayName: user.displayName,
+          email: user.email,
+          createdAt: user.createdAt,
+          preferences: user.preferences,
+          streak: user.active_days_streak
+        },
+        moodHistory: moods.success ? moods.data : [],
+        journalEntries: journals.success ? journals.data : [],
+        breathingSessions: breathing.success ? breathing.data : [],
+        exportedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `alora-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Export Complete", {
+        description: "Your data has been downloaded as a JSON file.",
+      });
+    } catch {
+      toast.error("Export Failed", {
+        description: "An error occurred while preparing your data download.",
+      });
+    }
   };
 
-  const handleDeleteAccount = () => {
-    // Handle account deletion
-    toast.error("Account Deletion", {
-      description: "This feature is not yet available",
-    });
+  const handleUpdatePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("Passwords mismatch", { description: "New password and confirmation must match." });
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      toast.error("Password too short", { description: "Password must be at least 6 characters." });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await firebaseService.auth.updatePassword(passwordData.newPassword);
+      if (res.success) {
+        toast.success("Password Updated", { description: "Your account is now more secure." });
+        setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: unknown) {
+      toast.error("Update Failed", { description: err instanceof Error ? err.message : "Could not update password." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("ARE YOU ABSOLUTELY SURE? This will permanently delete your account and all your data. This action cannot be undone.")) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await firebaseService.auth.deleteAccount();
+      if (res.success) {
+        toast.success("Account Deleted", { description: "We're sad to see you go. Redirecting..." });
+        setTimeout(() => window.location.href = "/", 2000);
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: unknown) {
+      toast.error("Deletion Failed", { description: err instanceof Error ? err.message : "Could check if you recently logged in." });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -252,7 +311,7 @@ export default function ProfilePage() {
                     <Label>Theme</Label>
                     <Select
                       value={theme}
-                      onValueChange={(value: 'light' | 'dark' | 'system') => setTheme(value as any)}
+                      onValueChange={(value: "light" | "dark" | "system") => setTheme(value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -268,7 +327,7 @@ export default function ProfilePage() {
                     <Label>Font Size</Label>
                     <Select
                       value={fontSize}
-                      onValueChange={(value: any) => setFontSize(value)}
+                      onValueChange={(value: "small" | "medium" | "large" | "extra-large") => setFontSize(value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -559,8 +618,8 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                <Button className="w-full">
-                  Update Password
+                <Button className="w-full" onClick={handleUpdatePassword} disabled={isLoading}>
+                  {isLoading ? <LoadingSpinner size="sm" text="Updating..." /> : "Update Password"}
                 </Button>
               </CardContent>
             </Card>

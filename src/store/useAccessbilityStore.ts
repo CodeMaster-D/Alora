@@ -4,19 +4,19 @@ import { persist } from "zustand/middleware";
 interface AccessibilityState {
   theme: "light" | "dark" | "system";
   highContrast: boolean;
-  fontSize: "small" | "medium" | "large";
+  fontSize: "small" | "medium" | "large" | "extra-large";
   fontFamily: "default" | "dyslexic" | "hyperlegible";
   reducedMotion: boolean;
   screenReader: boolean;
-  language: string; // <-- Tambah ini
+  language: string;
   
   setTheme: (theme: "light" | "dark" | "system") => void;
   toggleHighContrast: () => void;
-  setFontSize: (size: "small" | "medium" | "large") => void;
+  setFontSize: (size: "small" | "medium" | "large" | "extra-large") => void;
   setFontFamily: (font: "default" | "dyslexic" | "hyperlegible") => void;
   toggleReducedMotion: () => void;
   toggleScreenReader: () => void;
-  setLanguage: (lang: string) => void; // <-- Tambah ini
+  setLanguage: (lang: string) => void;
   resetSettings: () => void;
 }
 

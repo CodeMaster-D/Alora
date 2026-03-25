@@ -61,7 +61,7 @@ function InfiniteMarquee({ baseVelocity = 100 }: MarqueeProps) {
   const x = useTransform(baseX, (v) => `${wrap(-20, -45, v)}%`);
 
   const directionFactor = useRef<number>(1);
-  
+
   useAnimationFrame((t, delta) => {
     let moveBy = directionFactor.current * baseVelocity * (delta / 1000);
     if (velocityFactor.get() !== 0) {
@@ -110,13 +110,13 @@ export function About() {
   const isInView = useInView(containerRef, { once: true, margin: "-20%" });
 
   return (
-    <section 
-      id="about" 
+    <section
+      id="about"
       ref={containerRef}
       className="py-32 relative overflow-hidden bg-background"
     >
       <div className="container mx-auto px-6 mb-20 flex flex-col items-center text-center">
-        <motion.div 
+        <motion.div
           className="max-w-4xl"
           initial={{ opacity: 0, y: 40 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -124,27 +124,27 @@ export function About() {
         >
           {/* UPDATE: Pakai text-foreground */}
           <h2 className="text-4xl md:text-7xl font-bold tracking-tight mb-8 text-foreground leading-[1.1]">
-            Designed for the <br /> 
+            Designed for the <br />
             <span className="text-[#7EA98A] italic font-serif">modern mind.</span>
           </h2>
-          
+
           {/* UPDATE: Pakai text-foreground/90 */}
           <p className="text-lg md:text-2xl text-foreground/90 leading-relaxed max-w-3xl mx-auto">
-            Alora is a wellness platform by <span className="text-[#7EA98A] font-semibold">Djob Misael Melodi</span> and <span className="text-[#7EA98A] font-semibold">Farisya Fatanansyah</span>, bridging the gap between modern aesthetics and digital equity. Built with Next.js and Tailwind CSS, Alora democratizes mental health through inclusive tools—ensuring a functional, human-centric sanctuary accessible to everyone.
+            Alora is a wellness platform by <span className="text-[#7EA98A] font-semibold">Djob Misael Melodi</span> and <span className="text-[#7EA98A] font-semibold">Farisya Fatanansyah</span>, bridging the gap between modern aesthetics and digital equity. Built with Next.js and Tailwind CSS, Alora democratizes mental health through inclusive tools-ensuring a functional, human-centric sanctuary accessible to everyone.
           </p>
         </motion.div>
       </div>
 
       <div className="relative py-12">
-        <div 
-          className="pointer-events-none absolute left-0 right-0 bottom-10 h-32 z-0 opacity-40 bg-gradient-to-r from-transparent via-[#7EA98A] to-transparent" 
+        <div
+          className="pointer-events-none absolute left-0 right-0 bottom-10 h-32 z-0 opacity-40 bg-gradient-to-r from-transparent via-[#7EA98A] to-transparent"
           style={{ filter: 'blur(80px)' }}
         />
 
         <div className="relative z-10">
           <InfiniteMarquee baseVelocity={-1.5} />
         </div>
-        
+
         <div className="pointer-events-none absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-background via-background/20 to-transparent z-20" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-background via-background/20 to-transparent z-20" />
       </div>
