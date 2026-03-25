@@ -52,7 +52,7 @@ export default function LoginPage() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
-      toast.error("Tolong isi email dan password dengan benar.");
+      toast.error("Please fill in the email and password correctly.");
       return;
     }
     
@@ -60,13 +60,13 @@ export default function LoginPage() {
     try {
       const success = await login(formData.email, formData.password);
       if (success) {
-        toast.success("Login Berhasil!");
+        toast.success("Login Successful!");
         router.push("/dashboard"); // Redirect manual untuk trigger client-side transition
       } else {
-        toast.error("Email atau Password salah.");
+        toast.error("Invalid email or password.");
       }
     } catch (error) {
-      toast.error("Terjadi kesalahan saat mencoba login.");
+      toast.error("An error occurred while trying to log in.");
     } finally {
       setIsLoading(false);
     }
@@ -77,13 +77,13 @@ export default function LoginPage() {
     try {
       const success = await loginWithGoogle();
       if (success) {
-        toast.success("Login dengan Google Berhasil!");
+        toast.success("Login with Google Successful!");
         router.push("/dashboard");
       } else {
-        toast.error("Gagal login dengan Google.");
+        toast.error("Failed to login with Google.");
       }
     } catch (error) {
-      toast.error("Terjadi kesalahan sistem Google Auth.");
+      toast.error("A system error occurred while trying to log in with Google.");
     } finally {
       setIsGoogleLoading(false);
     }
@@ -149,7 +149,7 @@ export default function LoginPage() {
               
               <Button 
                 type="submit" 
-                className="w-full h-14 rounded-2xl bg-[#D48C70] hover:bg-[#D48C70]/90 text-white font-bold text-base shadow-xl shadow-[#D48C70]/20 transition-all active:scale-[0.98]" 
+                className="w-full h-14 rounded-2xl bg-[#D48C70] hover:bg-[#D48C70]/90 text-white font-normal text-base shadow-xl shadow-[#D48C70]/20 transition-all active:scale-[0.98]" 
                 disabled={isLoading || isGoogleLoading}
               >
                 {isLoading ? (
@@ -168,7 +168,7 @@ export default function LoginPage() {
 
             <div className="relative flex items-center py-2">
               <div className="flex-grow border-t border-white/20 dark:border-white/10"></div>
-              <span className="flex-shrink-0 mx-4 text-xs uppercase tracking-widest font-bold text-foreground/40">Atau</span>
+              <span className="flex-shrink-0 mx-4 text-xs uppercase tracking-widest font-normal text-foreground/40">Or</span>
               <div className="flex-grow border-t border-white/20 dark:border-white/10"></div>
             </div>
 
@@ -177,7 +177,7 @@ export default function LoginPage() {
               variant="outline"
               onClick={handleGoogleSubmit}
               disabled={isLoading || isGoogleLoading}
-              className="w-full h-14 rounded-2xl bg-white/50 hover:bg-white/80 border-white/30 text-foreground font-bold shadow-sm transition-all active:scale-[0.98]"
+              className="w-full h-14 rounded-2xl bg-[#FFFFFF] hover:bg-white/80 border-white/30 text-foreground font-normal shadow-sm transition-all active:scale-[0.98]"
             >
               {isGoogleLoading ? (
                  <div className="flex items-center gap-2">
@@ -193,9 +193,9 @@ export default function LoginPage() {
             </Button>
 
             <div className="mt-6 text-center text-sm font-medium">
-              <span className="text-foreground/50">Belum punya akun? </span>
+              <span className="text-foreground/50">Don&apos;t have an account? </span>
               <Link href="/auth/register" className="text-[#D48C70] hover:text-[#D48C70]/80 transition-colors">
-                Daftar sekarang
+                register now
               </Link>
             </div>
           </CardContent>

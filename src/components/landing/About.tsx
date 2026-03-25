@@ -130,7 +130,7 @@ export function About() {
           
           {/* UPDATE: Pakai text-foreground/90 */}
           <p className="text-lg md:text-2xl text-foreground/90 leading-relaxed max-w-3xl mx-auto">
-            Alora is a high-performance wellness platform by <span className="text-[#7EA98A] font-semibold">Djob Misael Melodi</span> and <span className="text-[#7EA98A] font-semibold">Farisya Fatanansyah</span>, bridging the gap between modern aesthetics and digital equity. Built with Next.js and Tailwind CSS, Alora democratizes mental health through inclusive tools—ensuring a functional, human-centric sanctuary accessible to everyone.
+            Alora is a wellness platform by <span className="text-[#7EA98A] font-semibold">Djob Misael Melodi</span> and <span className="text-[#7EA98A] font-semibold">Farisya Fatanansyah</span>, bridging the gap between modern aesthetics and digital equity. Built with Next.js and Tailwind CSS, Alora democratizes mental health through inclusive tools—ensuring a functional, human-centric sanctuary accessible to everyone.
           </p>
         </motion.div>
       </div>

@@ -4,7 +4,6 @@ import { useRef, useEffect } from "react";
 import { 
   motion, 
   useMotionValue, 
-  useSpring, 
   useTransform, 
   animate 
 } from "framer-motion";
@@ -14,7 +13,6 @@ import Link from "next/link";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import Image from "next/image";
 
-// Data Donut Chart Multi-Segment
 const data = [
   { name: "Focus", value: 400 },
   { name: "Relax", value: 300 },
@@ -23,13 +21,11 @@ const data = [
 
 const COLORS = ["#7EA385", "#94B49B", "#B4CFB0"]; 
 
-// Komponen Counter khusus buat angka yang jalan
 function CounterUp({ target, duration = 3 }: { target: number; duration?: number }) {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (latest) => Math.round(latest));
 
   useEffect(() => {
-    // Jalankan animasi dari 0 ke target
     const controls = animate(count, target, { duration: duration, ease: "easeOut" });
     return controls.stop;
   }, [count, target, duration]);
@@ -40,7 +36,6 @@ function CounterUp({ target, duration = 3 }: { target: number; duration?: number
 export function Hero() {
   return (
     <section className="relative min-h-screen flex items-center pt-24 pb-12 overflow-hidden bg-background font-atkinson">
-      {/* Background Decor */}
       <div className="absolute top-1/4 -left-20 w-72 h-72 bg-primary/10 rounded-full blur-[120px] animate-pulse" />
 
       <div className="container mx-auto px-6 relative z-10">
@@ -59,7 +54,7 @@ export function Hero() {
               With Alora
             </h1>
 
-            <p className="max-w-xl text-lg md:text-xl text-foreground/60 leading-relaxed font-atkinson">
+            <p className="max-w-xl text-lg md:text-xl text-foreground/60 leading-relaxed">
               Alora helps you balance your digital life through mindful breathing, 
               reflective journaling, and emotional tracking.
             </p>
@@ -73,13 +68,13 @@ export function Hero() {
               </Link>
               
               <div className="flex items-center gap-4 p-2 pl-4 pr-6 bg-white/10 border border-white/20 rounded-2xl backdrop-blur-md border-dashed text-foreground">
-                <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                <span className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
                     <Zap className="h-5 w-5" />
-                </div>
-                <div className="text-left">
-                    <p className="text-[10px] uppercase opacity-40 font-bold tracking-widest leading-none mb-1">Status</p>
-                    <p className="text-sm font-semibold">Live Ritual</p>
-                </div>
+                </span>
+                <span className="text-left flex flex-col">
+                    <span className="text-[10px] uppercase opacity-40 font-bold tracking-widest leading-none mb-1">Status</span>
+                    <span className="text-sm font-medium">Live Ritual</span>
+                </span>
               </div>
             </div>
           </motion.div>
@@ -87,7 +82,6 @@ export function Hero() {
           {/* RIGHT CONTENT */}
           <div className="relative h-[600px] lg:h-[750px] w-full flex items-center justify-center lg:justify-end">
             
-            {/* MAIN IMAGE ASSET */}
             <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -106,7 +100,7 @@ export function Hero() {
                 </div>
             </motion.div>
 
-            {/* DETAILING - WHITE GLASSMORPHISM WITH COUNTER */}
+            {/* DETAILING CARDS */}
             <div className="absolute top-10 right-0 lg:right-[-2%] z-30 flex flex-col gap-5">
                 {[
                     { icon: Wind, label: "Flow State", val: "Deep Focus", color: "text-emerald-600", bg: "bg-emerald-500/10" },
@@ -119,24 +113,24 @@ export function Hero() {
                         transition={{ delay: 0.5 + (i * 0.2) }}
                         className="p-5 bg-white/40 backdrop-blur-[20px] border border-white/40 rounded-[2.5rem] flex items-center gap-4 w-56 shadow-none"
                     >
-                        <div className={`h-11 w-11 ${item.bg} rounded-full flex items-center justify-center ${item.color}`}>
+                        <span className={`h-11 w-11 ${item.bg} rounded-full flex items-center justify-center ${item.color}`}>
                             <item.icon className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] uppercase opacity-60 font-bold leading-none mb-1 text-black">{item.label}</p>
-                            <p className="text-sm font-semibold text-black">
+                        </span>
+                        <span className="flex flex-col">
+                            <span className="text-[10px] uppercase opacity-60 font-bold leading-none mb-1 text-black">{item.label}</span>
+                            <span className="text-sm font-normal text-black">
                               {typeof item.val === 'number' ? (
                                 <><CounterUp target={item.val} />{item.suffix}</>
                               ) : (
                                 item.val
                               )}
-                            </p>
-                        </div>
+                            </span>
+                        </span>
                     </motion.div>
                 ))}
             </div>
 
-            {/* DONUT CHART - WHITE GLASSMORPHISM WITH COUNTER */}
+            {/* ZEN SCORE DONUT */}
             <motion.div 
                 initial={{ scale: 0.8, opacity: 0, x: 20 }}
                 animate={{ scale: 1, opacity: 1, x: 0 }}
@@ -158,19 +152,19 @@ export function Hero() {
                                 cornerRadius={25}
                                 isAnimationActive={true}
                             >
-                                {data.map((entry, index) => (
+                                {data.map((_, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
                         </PieChart>
                     </ResponsiveContainer>
                     
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl font-bold tracking-tighter text-black">
+                    <span className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-4xl font-normal tracking-tighter text-black">
                           <CounterUp target={100} duration={2.5} />
                         </span>
                         <span className="text-[9px] uppercase tracking-widest opacity-60 font-bold text-black">Zen Score</span>
-                    </div>
+                    </span>
                 </div>
             </motion.div>
 

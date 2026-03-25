@@ -91,16 +91,6 @@ export default function RegisterPage() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="w-full max-w-md"
       >
-        <div className="flex justify-center mb-8">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform duration-300">
-                <Sparkles className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-br from-primary to-primary/40 bg-clip-text text-transparent tracking-tight">
-                Alora
-              </span>
-            </Link>
-        </div>
 
         <GlassCard className="p-2 sm:p-6">
           <CardHeader className="space-y-2 pb-6">
@@ -108,19 +98,19 @@ export default function RegisterPage() {
                 Join our Sanctuary
             </CardTitle>
             <CardDescription className="text-center font-medium text-foreground/50">
-                Mulai perjalanan Anda menuju ketenangan jiwa hari ini.
+                Start your daily reflection journal today.
             </CardDescription>
           </CardHeader>
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="displayName" className="text-xs uppercase tracking-widest font-bold opacity-60 ml-1">Nama Lengkap</Label>
+                <Label htmlFor="displayName" className="text-xs uppercase tracking-widest font-bold opacity-60 ml-1">Full Name</Label>
                 <Input
                   id="displayName"
                   name="displayName"
                   type="text"
-                  placeholder="Ketik nama Anda di sini..."
+                  placeholder="Type your full name here"
                   value={formData.displayName}
                   onChange={handleInputChange}
                   required
@@ -168,7 +158,7 @@ export default function RegisterPage() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-xs uppercase tracking-widest font-bold opacity-60 ml-1">Konfirmasi Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-xs uppercase tracking-widest font-bold opacity-60 ml-1">Confirm Password</Label>
                     <div className="relative">
                       <Input
                         id="confirmPassword"
@@ -194,28 +184,28 @@ export default function RegisterPage() {
               </div>
 
               <div className="pt-4">
-                <Button 
-                    type="submit" 
-                    className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base shadow-xl shadow-primary/20 transition-all active:scale-[0.98] group" 
+          <Button 
+                type="submit" 
+                className="w-full h-14 rounded-2xl bg-[#D48C70] hover:bg-[#D48C70]/90 text-white font-normal text-base shadow-xl shadow-[#D48C70]/20 transition-all active:scale-[0.98]" 
                     disabled={isLoading}
                 >
                     {isLoading ? (
                     <div className="flex items-center gap-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground"></div>
-                        <span>Memproses...</span>
+                        <span>Processing...</span>
                     </div>
                     ) : (
                     <>
                         <UserPlus className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
-                        Buat Akun Sekarang
+                        Create Account Now
                     </>
                     )}
                 </Button>
               </div>
             </form>
             <div className="mt-8 text-center text-sm font-medium">
-              <span className="text-foreground/50">Sudah memiliki akun? </span>
-              <Link href="/auth/login" className="text-primary hover:text-primary/80 transition-colors font-bold inline-flex items-center">
+              <span className="text-foreground/50">Already have an account? </span>
+              <Link href="/auth/login" className="text-[#D48C70] hover:text-[#D48C70]/80 transition-colors">
                 Sign In <ChevronRight className="h-3 w-3 ml-0.5" />
               </Link>
             </div>

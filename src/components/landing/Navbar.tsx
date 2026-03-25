@@ -102,9 +102,6 @@ export function Navbar() {
       >
         {/* Logo Section */}
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="relative h-9 w-9 flex items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform duration-300">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
-          </div>
           <span className="text-2xl font-semibold bg-gradient-to-br from-primary to-primary/40 bg-clip-text text-transparent tracking-tight">
             Alora
           </span>

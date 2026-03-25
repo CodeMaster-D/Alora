@@ -241,22 +241,27 @@ export default function BreathePage({ isDemo = false }: BreatheProps) {
       </AnimatePresence>
 
       {/* UI HEADER */}
-      {!isDemo && (
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-          <div className="space-y-1">
-            <h1 className="text-4xl font-medium tracking-tight bg-gradient-to-r from-foreground to-foreground/40 bg-clip-text text-transparent italic">
-              Quiet the Mind
-            </h1>
-            <p className="text-foreground/50 font-medium text-sm">Controlled breathing for digital wellness.</p>
-          </div>
-          <div className="flex items-center gap-3 p-1.5 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-            <div className="flex items-center gap-2 px-3">
-               <span className="text-[10px] uppercase tracking-widest font-bold opacity-40 text-foreground">Audio</span>
-               <Switch checked={isSoundEnabled} onCheckedChange={setIsSoundEnabled} className="scale-75" />
-            </div>
-          </div>
-        </div>
-      )}
+<div className="flex flex-col md:flex-row justify-between items-end gap-4">
+  {/* Judul cuma muncul kalau BUKAN demo, biar landing page lo gak double judul */}
+  {!isDemo ? (
+    <div className="space-y-1">
+      <h1 className="text-4xl font-medium tracking-tight bg-gradient-to-r from-foreground to-foreground/40 bg-clip-text text-transparent italic">
+        Quiet the Mind
+      </h1>
+      <p className="text-foreground/50 font-medium text-sm">Controlled breathing for digital wellness.</p>
+    </div>
+  ) : (
+    <div></div> // Spacer kosong biar toggle audio tetep di kanan
+  )}
+
+  {/* Toggle Audio - SEKARANG MUNCUL DI MANA SAJA */}
+  <div className="flex items-center gap-3 p-1.5 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+    <div className="flex items-center gap-2 px-3">
+       <span className="text-[10px] uppercase tracking-widest font-bold opacity-40 text-foreground">Audio</span>
+       <Switch checked={isSoundEnabled} onCheckedChange={setIsSoundEnabled} className="scale-75" />
+    </div>
+  </div>
+</div>
 
       {/* MAIN CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

@@ -1,11 +1,4 @@
-font nya sisa 1 yg belum bisa di ubah aksesbilitas (fixed ✔)
 font ketika ubah thema itu harus sesuai enak di lihat di dalam tool bar
-profile masih eror (fixed ✔)
-clear url (done ✔)
-sidebar auto kebuka jangan collaps ketika habis login (done ✔)
-crausell otomatis di bagian core feature (done ✔)
-buat akun juri
 perbaiki navbar ketika di scroll dia ga ngikut
-tambahkan scroll ke atas (done ✔)
-buat footer (done ✔)
-buat send email berfungsi (done ✔)
+perbaiki login sama register
+tambahkan readme biar juri baca khussunya cara pemakaian web ini 
