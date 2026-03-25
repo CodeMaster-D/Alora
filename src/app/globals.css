@@ -1,5 +1,5 @@
 /* 1. IMPORT FONT & TAILWIND */
-@import url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/data/OpenDyslexic/trebuchet.css');
+@import url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/open-dyslexic-regular.css');
 @import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap");
 @import "tailwindcss";
 
@@ -21,7 +21,7 @@
   --radius-md: calc(0.5rem - 2px);
   --radius-sm: calc(0.5rem - 4px);
   
-  --font-dyslexic: "OpenDyslexic", sans-serif;
+  --font-dyslexic: "OpenDyslexicRegular", sans-serif;
   --font-atkinson: "Atkinson Hyperlegible", sans-serif;
 }
 
@@ -85,7 +85,7 @@ html {
 
   /* --- FONT FAMILY OVERRIDES --- */
   [data-font-family="dyslexic"] * {
-    font-family: "OpenDyslexic", sans-serif !important;
+    font-family: "OpenDyslexicRegular", sans-serif !important;
   }
   [data-font-family="hyperlegible"] * {
     font-family: "Atkinson Hyperlegible", sans-serif !important;

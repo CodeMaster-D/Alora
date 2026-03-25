@@ -5,7 +5,8 @@ import { z } from "zod";
 // --- 1. USERS ---
 export const UserPreferencesSchema = z.object({
   theme: z.enum(["light", "dark", "system"]).default("system"),
-  fontSize: z.enum(["small", "medium", "large"]).default("medium"),
+  fontSize: z.enum(["small", "medium", "large", "extra-large"]).default("medium"),
+  fontFamily: z.enum(["default", "dyslexic", "hyperlegible"]).default("default"),
   notifications: z.object({
     email: z.boolean().default(true),
     push: z.boolean().default(true),
@@ -35,7 +36,6 @@ export const UserPreferencesSchema = z.object({
 export const UserProfileSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  // For dates arriving in REST payloads, we accept strings and parse them to Dates/Timestamps in the feature layer
   dateOfBirth: z.string().optional(), 
   gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
   phone: z.string().optional(),
@@ -55,6 +55,7 @@ export const UserSchema = z.object({
   preferences: UserPreferencesSchema.default({
     theme: "system",
     fontSize: "medium",
+    fontFamily: "default",
     notifications: {
       email: true,
       push: true,
@@ -139,4 +140,13 @@ export const AppointmentSchema = z.object({
     })
   ).default([]),
   status: z.enum(["scheduled", "completed", "cancelled"]).default("scheduled"),
+});
+
+// --- 7. CONTACT MESSAGES ---
+export const ContactSchema = z.object({
+  email: z.string().email(),
+  name: z.string().optional(),
+  subject: z.string().optional(),
+  message: z.string().min(1, "Message cannot be empty"),
+  createdAt: z.string().optional(),
 });

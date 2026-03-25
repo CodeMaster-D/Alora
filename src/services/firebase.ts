@@ -437,13 +437,11 @@ export const journalService = {
 export const breathingService = {
   getBreathingExercises: async (): Promise<ApiResponse<BreathingExercise[]>> => {
     try {
-      const q = query(collection(db, "breathing_exercises"));
-      const querySnapshot = await getDocs(q);
-      const exercises: BreathingExercise[] = [];
-      querySnapshot.forEach((docSnap) => {
-        exercises.push({ ...docSnap.data(), id: docSnap.id } as BreathingExercise);
-      });
-      return { success: true, data: exercises };
+      const response = await fetch("/api/breathing/exercises");
+      const data = await response.json();
+      
+      if (!response.ok) throw new Error(data.error);
+      return { success: true, data: data.data };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -458,6 +456,50 @@ export const breathingService = {
       return { success: false, error: error.message };
     }
   },
+
+  saveBreathingSession: async (userId: string, exerciseId: string): Promise<ApiResponse<void>> => {
+    try {
+      await addDoc(collection(db, "breathing_sessions"), {
+        userId,
+        exerciseId,
+        timestamp: new Date(),
+      });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  getBreathingSessions: async (userId: string): Promise<ApiResponse<any[]>> => {
+    try {
+      const q = query(
+        collection(db, "breathing_sessions"),
+        where("userId", "==", userId),
+        orderBy("timestamp", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      const sessions = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      return { success: true, data: sessions };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// --- CONTACT SERVICE ---
+export const contactService = {
+  sendMessage: async (data: { email: string; name?: string; message: string }): Promise<ApiResponse<void>> => {
+    try {
+      await addDoc(collection(db, "contact_messages"), {
+        ...data,
+        createdAt: new Date(),
+        status: "new",
+      });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
 };
 
 export const firebaseService = {
@@ -465,4 +507,5 @@ export const firebaseService = {
   mood: moodService,
   journal: journalService,
   breathing: breathingService,
+  contact: contactService,
 };

@@ -84,7 +84,10 @@ export function Navbar() {
   if (!mounted) return null;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[100] px-4 py-4 pointer-events-none">
+    <header className={cn(
+      "fixed top-0 left-0 right-0 z-[100] transition-all duration-300 pointer-events-none",
+      isScrolled ? "py-2" : "py-4"
+    )}>
       <motion.nav
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -92,9 +95,8 @@ export function Navbar() {
         className={cn(
           "mx-auto max-w-7xl h-16 transition-all duration-500 pointer-events-auto",
           "flex items-center justify-between px-6 rounded-[2rem]",
-          "",
           isScrolled 
-            ? "bg-card/60 backdrop-blur-xl border-white/20 dark:border-white/10" 
+            ? "bg-card/90 dark:bg-card/80 backdrop-blur-xl border-white/20 dark:border-white/10 shadow-xl scale-[0.98]" 
             : "bg-card/30 backdrop-blur-xl border-white/10 dark:border-white/5"
         )}
       >
@@ -156,7 +158,7 @@ export function Navbar() {
                 <Link href="/auth/login">Sign In</Link>
               </Button>
               <Button asChild className="h-10 rounded-2xl px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all group">
-                <Link href="/auth/login">
+                <Link href="/auth/register">
                   Join Alora
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>

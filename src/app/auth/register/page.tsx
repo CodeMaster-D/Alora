@@ -4,14 +4,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, UserPlus } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Sparkles, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/store/authStore";
-import { toast } from "sonner"; // Pakai sonner
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+  <Card className={cn(
+    "bg-white/40 dark:bg-black/10 backdrop-blur-2xl border border-white/20 shadow-xl rounded-[32px] overflow-hidden transition-all duration-300",
+    className
+  )}>
+    {children}
+  </Card>
+);
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,18 +45,18 @@ export default function RegisterPage() {
     e.preventDefault();
     
     if (!formData.email || !formData.password || !formData.displayName) {
-      toast.error("Please fill in all fields");
+      toast.error("Tolong isi semua bidang yang tersedia.");
       return;
     }
     
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("Konformasi password tidak sesuai.");
       return;
     }
     
     if (formData.password.length < 6) {
-      toast.error("Password too short", {
-        description: "Password must be at least 6 characters",
+      toast.error("Password terlalu pendek.", {
+        description: "Minimal password adalah 6 karakter demi keamanan.",
       });
       return;
     }
@@ -58,53 +67,68 @@ export default function RegisterPage() {
       const success = await register(formData.email, formData.password, formData.displayName);
       
       if (success) {
-        toast.success("Account created!", {
-          description: "Welcome to the platform.",
+        toast.success("Akun Berhasil Dibuat!", {
+          description: "Selamat datang di komunitas Alora.",
         });
         router.push("/dashboard");
       } else {
-        toast.error("Registration failed", {
-          description: "Could not create your account at this time.",
+        toast.error("Registrasi Gagal", {
+          description: "Terjadi kendala saat membuat akun Anda. Coba beberapa saat lagi.",
         });
       }
     } catch (error) {
-      toast.error("An error occurred during registration");
+      toast.error("Kesalahan sistem saat pendaftaran.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4">
+    <div className="flex items-center justify-center min-h-screen bg-background p-6">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
         className="w-full max-w-md"
       >
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
-            <CardDescription className="text-center">
-              Enter your information to create an account
+        <div className="flex justify-center mb-8">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform duration-300">
+                <Sparkles className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <span className="text-2xl font-bold bg-gradient-to-br from-primary to-primary/40 bg-clip-text text-transparent tracking-tight">
+                Alora
+              </span>
+            </Link>
+        </div>
+
+        <GlassCard className="p-2 sm:p-6">
+          <CardHeader className="space-y-2 pb-6">
+            <CardTitle className="text-3xl font-bold text-center tracking-tight text-foreground">
+                Join our Sanctuary
+            </CardTitle>
+            <CardDescription className="text-center font-medium text-foreground/50">
+                Mulai perjalanan Anda menuju ketenangan jiwa hari ini.
             </CardDescription>
           </CardHeader>
+          
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="displayName">Name</Label>
+                <Label htmlFor="displayName" className="text-xs uppercase tracking-widest font-bold opacity-60 ml-1">Nama Lengkap</Label>
                 <Input
                   id="displayName"
                   name="displayName"
                   type="text"
-                  placeholder="Your name"
+                  placeholder="Ketik nama Anda di sini..."
                   value={formData.displayName}
                   onChange={handleInputChange}
                   required
+                  className="rounded-xl bg-white/30 border-white/20 h-12 text-sm focus:ring-primary/20 focus:border-primary/40 transition-all shadow-inner"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-xs uppercase tracking-widest font-bold opacity-60 ml-1">Email</Label>
                 <Input
                   id="email"
                   name="email"
@@ -113,82 +137,90 @@ export default function RegisterPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
+                  className="rounded-xl bg-white/30 border-white/20 h-12 text-sm focus:ring-primary/20 focus:border-primary/40 transition-all shadow-inner"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </div>
+              
+              <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-xs uppercase tracking-widest font-bold opacity-60 ml-1">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="••••••••"
+                        className="rounded-xl bg-white/30 border-white/20 h-12 text-sm pr-12 focus:ring-primary/20 focus:border-primary/40 transition-all shadow-inner"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1 h-10 w-10 hover:bg-transparent rounded-full opacity-50 hover:opacity-100 transition-opacity"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-xs uppercase tracking-widest font-bold opacity-60 ml-1">Konfirmasi Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="••••••••"
+                        className="rounded-xl bg-white/30 border-white/20 h-12 text-sm pr-12 focus:ring-primary/20 focus:border-primary/40 transition-all shadow-inner"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1 h-10 w-10 hover:bg-transparent rounded-full opacity-50 hover:opacity-100 transition-opacity"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+
+              <div className="pt-4">
+                <Button 
+                    type="submit" 
+                    className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base shadow-xl shadow-primary/20 transition-all active:scale-[0.98] group" 
+                    disabled={isLoading}
+                >
+                    {isLoading ? (
+                    <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground"></div>
+                        <span>Memproses...</span>
+                    </div>
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    <>
+                        <UserPlus className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
+                        Buat Akun Sekarang
+                    </>
                     )}
-                  </Button>
-                </div>
+                </Button>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creating account...
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Create Account
-                  </>
-                )}
-              </Button>
             </form>
-            <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-primary font-medium hover:underline">
-                Login
+            <div className="mt-8 text-center text-sm font-medium">
+              <span className="text-foreground/50">Sudah memiliki akun? </span>
+              <Link href="/auth/login" className="text-primary hover:text-primary/80 transition-colors font-bold inline-flex items-center">
+                Sign In <ChevronRight className="h-3 w-3 ml-0.5" />
               </Link>
             </div>
           </CardContent>
-        </Card>
+        </GlassCard>
       </motion.div>
     </div>
   );

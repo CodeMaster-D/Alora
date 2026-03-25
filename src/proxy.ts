@@ -16,6 +16,14 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/mood') ||
     pathname.startsWith('/analytics');
 
+  // 0. Aliasing: Redirect /login and /register to /auth equivalent
+  if (pathname === '/login') {
+    return NextResponse.redirect(new URL('/auth/login', request.url));
+  }
+  if (pathname === '/register') {
+    return NextResponse.redirect(new URL('/auth/register', request.url));
+  }
+
   // 1. Jika sudah login tapi mau ke landing/login/register -> lempar ke dashboard
   if (isAuthenticated && (isAuthPage || pathname === '/')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));

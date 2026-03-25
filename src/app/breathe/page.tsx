@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { BreathingExercise } from "@/types";
 import { firebaseService } from "@/services/firebase";
+import { useAuthStore } from "@/store/authStore";
 import { useAccessibilityStore } from "@/store/useAccessbilityStore";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ interface BreatheProps {
 }
 
 export default function BreathePage({ isDemo = false }: BreatheProps) {
+  const { user, isAuthenticated } = useAuthStore();
   const { reducedMotion } = useAccessibilityStore();
   const [exercises, setExercises] = useState<BreathingExercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<BreathingExercise | null>(null);
@@ -61,17 +63,16 @@ export default function BreathePage({ isDemo = false }: BreatheProps) {
     osc.stop(ctx.currentTime + 0.5);
   }, [isSoundEnabled]);
 
-  const handleFinishSession = useCallback(() => {
+  const handleFinishSession = useCallback(async () => {
     setIsRunning(false);
     setIsCompleted(true);
     playSound(659);
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    if (!isDemo) {
-      // Logic simpan ke DB
-      console.log("Saving session to database...");
+    if (!isDemo && user && selectedExercise) {
+      await firebaseService.breathing.saveBreathingSession(user.id, selectedExercise.id);
     }
-  }, [isDemo, playSound]);
+  }, [isDemo, user, selectedExercise, playSound]);
 
   const handleReset = useCallback(() => {
     setIsRunning(false);
@@ -89,25 +90,37 @@ export default function BreathePage({ isDemo = false }: BreatheProps) {
 
   // --- 2. Effects ---
 
+
   // Fetch Data
   useEffect(() => {
     const fetchExercises = async () => {
+      // Tunggu sampai auth ready agar tidak terblokir rules Firestore
+      if (!isAuthenticated && !isDemo) return;
+      
       try {
         const response = await firebaseService.breathing.getBreathingExercises();
-        if (response.success && response.data) {
-          const data = response.data; // Response data sudah bertipe BreathingExercise[] dari service
+        
+        if (response.success && response.data && response.data.length > 0) {
+          const data = response.data;
           setExercises(data);
-          if (data.length > 0) {
-            setSelectedExercise(data[0]);
-            setPhaseTimeLeft(data[0].inhaleTime);
-          }
+          setSelectedExercise(data[0]);
+          setPhaseTimeLeft(data[0].inhaleTime);
+        } else {
+          // Fallback static data if firestore is empty
+          const fallback: BreathingExercise[] = [
+            { id: 'box', name: 'Box Breathing', description: '', inhaleTime: 4, holdTime: 4, exhaleTime: 4, cycles: 4, color: '#4F46E5', icon: 'Wind' },
+            { id: '478', name: '4-7-8 Relax', description: '', inhaleTime: 4, holdTime: 7, exhaleTime: 8, cycles: 4, color: '#10B981', icon: 'Wind' }
+          ];
+          setExercises(fallback);
+          setSelectedExercise(fallback[0]);
+          setPhaseTimeLeft(fallback[0].inhaleTime);
         }
       } catch (error) {
         console.error("Error fetching exercises:", error);
       }
     };
     fetchExercises();
-  }, []);
+  }, [isAuthenticated, isDemo]);
 
   // Audio Context Setup (Strictly No Any)
   useEffect(() => {

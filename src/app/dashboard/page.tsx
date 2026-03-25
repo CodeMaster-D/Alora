@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
   const [recentMoods, setRecentMoods] = useState<MoodEntry[]>([]);
   const [journalCount, setJournalCount] = useState(0);
+  const [breathingCount, setBreathingCount] = useState(0);
   const [chartData, setChartData] = useState<{ date: string; mood: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,9 +64,10 @@ export default function DashboardPage() {
       if (!user) return;
       setIsLoading(true);
       try {
-        const [moodResponse, journalResponse] = await Promise.all([
+        const [moodResponse, journalResponse, breathingResponse] = await Promise.all([
           firebaseService.mood.getMoodEntries(user.id),
-          firebaseService.journal.getJournalEntries(user.id)
+          firebaseService.journal.getJournalEntries(user.id),
+          firebaseService.breathing.getBreathingSessions(user.id)
         ]);
         
         if (moodResponse.success && moodResponse.data) {
@@ -85,6 +87,10 @@ export default function DashboardPage() {
 
         if (journalResponse.success && journalResponse.data) {
           setJournalCount(journalResponse.data.length);
+        }
+
+        if (breathingResponse.success && breathingResponse.data) {
+          setBreathingCount(breathingResponse.data.length);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -165,8 +171,8 @@ export default function DashboardPage() {
             [
               { title: "Mood Today", val: recentMoods[0]?.mood ? `${recentMoods[0].mood}/5` : "N/A", sub: recentMoods[0] ? `Logged at ${new Date(recentMoods[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "No entry", icon: Heart, color: "text-rose-500", bg: "bg-rose-500/10", emoji: MOOD_EMOJIS[recentMoods[0]?.mood] },
               { title: "Journal Entries", val: journalCount.toString(), sub: "Total entries", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
-              { title: "Breathing", val: "0", sub: "Sessions this week", icon: Wind, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-              { title: "Streak", val: "0 Days", sub: "Keep the momentum!", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" }
+              { title: "Breathing", val: breathingCount.toString(), sub: "Sessions tracked", icon: Wind, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+              { title: "Streak", val: `${user?.active_days_streak || 0} Days`, sub: "Daily streak", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" }
             ].map((item, i) => (
               <motion.div 
                 key={`stat-card-${i}`} 
@@ -215,23 +221,25 @@ export default function DashboardPage() {
                   <Skeleton className="h-[200px] w-[300px] md:w-[500px] rounded-2xl opacity-50" />
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%" minHeight={350}>
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.4 }} dy={10} />
-                    <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.4 }} dx={-10} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(20px)', backgroundColor: 'rgba(255,255,255,0.8)', color: '#000' }}
-                    />
-                    <Area type="monotone" dataKey="mood" stroke="#8884d8" strokeWidth={3} fill="url(#colorMood)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="w-full h-full min-h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={350}>
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.4 }} dy={10} />
+                      <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', fontSize: 11, opacity: 0.4 }} dx={-10} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(20px)', backgroundColor: 'rgba(255,255,255,0.8)', color: '#000' }}
+                      />
+                      <Area type="monotone" dataKey="mood" stroke="#8884d8" strokeWidth={3} fill="url(#colorMood)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </CardContent>
           </GlassCard>

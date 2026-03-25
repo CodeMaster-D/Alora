@@ -22,12 +22,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-
-// 1. Menggunakan hook useAuth yang baru kamu berikan
-// Pastikan path import ini sesuai dengan lokasi file useAuth kamu
-import { useAuth } from "../../hooks/useAuth"; 
-
-// 2. Menggunakan Sonner mutlak
+import { useAuthStore } from "@/store/authStore";
+import { useAccessibilityStore } from "@/store/useAccessbilityStore";
+import { firebaseService } from "@/services/firebase";
 import { toast } from "sonner";
 
 interface UserSettings {
@@ -52,8 +49,14 @@ interface UserSettings {
 }
 
 export default function ProfilePage() {
-  // Mengambil user dan updateProfile dari useAuth hook
-  const { user, updateProfile } = useAuth();
+  const { user, updateUser } = useAuthStore();
+  const { 
+    theme, setTheme, 
+    fontSize, setFontSize, 
+    highContrast, toggleHighContrast, 
+    reducedMotion, toggleReducedMotion,
+    fontFamily, setFontFamily 
+  } = useAccessibilityStore();
   
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -64,27 +67,6 @@ export default function ProfilePage() {
     photoURL: user?.photoURL || "",
   });
 
-  const [settings, setSettings] = useState<UserSettings>({
-    theme: 'light',
-    fontSize: 'medium',
-    notifications: {
-      moodReminders: true,
-      journalReminders: true,
-      breathingReminders: false,
-      achievementAlerts: true,
-    },
-    accessibility: {
-      highContrast: false,
-      reducedMotion: false,
-      screenReader: false,
-      dyslexicFont: false,
-    },
-    privacy: {
-      dataSharing: false,
-      analytics: true,
-    },
-  });
-
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -92,7 +74,6 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    // Load user settings
     if (user) {
       setProfileData({
         displayName: user.displayName || "",
@@ -103,23 +84,23 @@ export default function ProfilePage() {
   }, [user]);
 
   const handleSaveProfile = async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
-      // updateProfile dari useAuth menerima Partial<UserProfile> dan mengembalikan Promise<{ success, error }>
-      const result = await updateProfile(profileData);
+      const success = await updateUser({
+        displayName: profileData.displayName,
+      });
       
-      if (result && !result.success) {
-        toast.error("Error", {
-          description: result.error || "Failed to update profile",
+      if (success) {
+        toast.success("Profile Updated", {
+          description: "Your display name has been saved successfully.",
         });
       } else {
-        toast.success("Success", {
-          description: "Your profile has been updated",
-        });
+        throw new Error("Failed to update profile");
       }
-    } catch (error) {
-      toast.error("Error", {
-        description: "Failed to update profile",
+    } catch (error: any) {
+      toast.error("Update Failed", {
+        description: error.message || "Could not update profile.",
       });
     } finally {
       setIsLoading(false);
@@ -127,15 +108,29 @@ export default function ProfilePage() {
   };
 
   const handleSaveSettings = async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
-      // Save settings to Firebase
-      toast.success("Success", {
-        description: "Your settings have been saved",
+      const result = await firebaseService.auth.updatePreferences(user.id, {
+        theme,
+        fontSize,
+        highContrast,
+        reducedMotion,
+        fontFamily,
+        notifications: true,
+        reminderTime: user.preferences?.reminderTime || "09:00",
       });
-    } catch (error) {
-      toast.error("Error", {
-        description: "Failed to save settings",
+      
+      if (result.success) {
+        toast.success("Settings Saved", {
+          description: "Your accessibility and theme preferences are synced to the cloud.",
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      toast.error("Save Failed", {
+        description: error.message || "Failed to sync preferences.",
       });
     } finally {
       setIsLoading(false);
@@ -256,10 +251,8 @@ export default function ProfilePage() {
                   <div className="space-y-2">
                     <Label>Theme</Label>
                     <Select
-                      value={settings.theme}
-                      onValueChange={(value: 'light' | 'dark' | 'high-contrast') => 
-                        setSettings(prev => ({ ...prev, theme: value }))
-                      }
+                      value={theme}
+                      onValueChange={(value: 'light' | 'dark' | 'system') => setTheme(value as any)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -267,17 +260,15 @@ export default function ProfilePage() {
                       <SelectContent>
                         <SelectItem value="light">Light</SelectItem>
                         <SelectItem value="dark">Dark</SelectItem>
-                        <SelectItem value="high-contrast">High Contrast</SelectItem>
+                        <SelectItem value="system">System</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Font Size</Label>
                     <Select
-                      value={settings.fontSize}
-                      onValueChange={(value: 'small' | 'medium' | 'large') => 
-                        setSettings(prev => ({ ...prev, fontSize: value }))
-                      }
+                      value={fontSize}
+                      onValueChange={(value: any) => setFontSize(value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -286,6 +277,7 @@ export default function ProfilePage() {
                         <SelectItem value="small">Small</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
                         <SelectItem value="large">Large</SelectItem>
+                        <SelectItem value="extra-large">Extra Large</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -324,13 +316,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.accessibility.highContrast}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        accessibility: { ...prev.accessibility, highContrast: checked }
-                      }))
-                    }
+                    checked={highContrast}
+                    onCheckedChange={toggleHighContrast}
                   />
                 </div>
 
@@ -342,13 +329,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.accessibility.reducedMotion}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        accessibility: { ...prev.accessibility, reducedMotion: checked }
-                      }))
-                    }
+                    checked={reducedMotion}
+                    onCheckedChange={toggleReducedMotion}
                   />
                 </div>
 
@@ -360,13 +342,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.accessibility.screenReader}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        accessibility: { ...prev.accessibility, screenReader: checked }
-                      }))
-                    }
+                    checked={false}
+                    disabled
                   />
                 </div>
 
@@ -378,13 +355,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.accessibility.dyslexicFont}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        accessibility: { ...prev.accessibility, dyslexicFont: checked }
-                      }))
-                    }
+                    checked={fontFamily === 'dyslexic'}
+                    onCheckedChange={(checked) => setFontFamily(checked ? 'dyslexic' : 'default')}
                   />
                 </div>
 
@@ -424,13 +396,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.notifications.moodReminders}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        notifications: { ...prev.notifications, moodReminders: checked }
-                      }))
-                    }
+                    checked={true}
+                    disabled
                   />
                 </div>
 
@@ -442,13 +409,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.notifications.journalReminders}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        notifications: { ...prev.notifications, journalReminders: checked }
-                      }))
-                    }
+                    checked={true}
+                    disabled
                   />
                 </div>
 
@@ -460,13 +422,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.notifications.breathingReminders}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        notifications: { ...prev.notifications, breathingReminders: checked }
-                      }))
-                    }
+                    checked={false}
+                    disabled
                   />
                 </div>
 
@@ -478,13 +435,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.notifications.achievementAlerts}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        notifications: { ...prev.notifications, achievementAlerts: checked }
-                      }))
-                    }
+                    checked={true}
+                    disabled
                   />
                 </div>
 
@@ -524,13 +476,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.privacy.dataSharing}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        privacy: { ...prev.privacy, dataSharing: checked }
-                      }))
-                    }
+                    checked={false}
+                    disabled
                   />
                 </div>
 
@@ -542,13 +489,8 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.privacy.analytics}
-                    onCheckedChange={(checked) => 
-                      setSettings(prev => ({
-                        ...prev,
-                        privacy: { ...prev.privacy, analytics: checked }
-                      }))
-                    }
+                    checked={true}
+                    disabled
                   />
                 </div>
 

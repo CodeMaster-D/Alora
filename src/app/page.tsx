@@ -4,6 +4,8 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
 import { About } from "@/components/landing/About";
 import { Contact } from "@/components/landing/Contact";
+import { Footer } from "@/components/landing/Footer";
+import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import BreathePage from "../app/breathe/page";
 import { useAccessibilityStore } from "@/store/useAccessbilityStore";
 import { useEffect } from "react";
@@ -41,11 +43,13 @@ export default function LandingPage() {
                 <h2 className="text-3xl md:text-5xl font-atkinson font-bold tracking-tight">Experience Alora</h2>
                 <p className="text-foreground/60 mt-4">Try our signature breathing ritual right here.</p>
               </div>
-              <BreathePage />
+              <BreathePage isDemo={true} />
            </div>
         </section>
 
         <Contact />
+        <Footer />
+        <ScrollToTop />
       </div>
     </main>
   );

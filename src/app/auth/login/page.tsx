@@ -194,7 +194,7 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center text-sm font-medium">
               <span className="text-foreground/50">Belum punya akun? </span>
-              <Link href="/register" className="text-[#D48C70] hover:text-[#D48C70]/80 transition-colors">
+              <Link href="/auth/register" className="text-[#D48C70] hover:text-[#D48C70]/80 transition-colors">
                 Daftar sekarang
               </Link>
             </div>
