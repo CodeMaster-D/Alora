@@ -109,6 +109,7 @@ export default function MoodPage() {
 
   useEffect(() => {
     if (user) fetchMoods();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleSubmit = async () => {

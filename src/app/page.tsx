@@ -10,7 +10,6 @@ import { Footer } from "@/components/landing/Footer";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import BreathePage from "../app/breathe/page";
 import { useAccessibilityStore } from "@/store/useAccessbilityStore";
-import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
   const { fontFamily, fontSize, highContrast, reducedMotion } = useAccessibilityStore();

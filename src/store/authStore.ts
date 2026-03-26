@@ -135,6 +135,11 @@ export const useAuthStore = create<AuthState>()(
           });
           // Hapus Cookie pas logout
           removeAuthCookie();
+          
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem("journal-storage");
+            window.localStorage.removeItem("mood-storage");
+          }
         } catch (error) {
           console.error("Logout error:", error);
           set({ isLoading: false });

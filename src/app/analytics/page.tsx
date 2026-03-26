@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import ExcelJS from "exceljs";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -306,6 +307,54 @@ const AnalyticsPage = () => {
 
   const avgMoodValue = Math.round(analyticsData.patterns.averageMood || 3);
 
+  const handleExportXLSX = async () => {
+    if (!analyticsData || analyticsData.logs.length === 0) return;
+    
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Analytics');
+
+    // Create Summary Block with Headers included at the end
+    worksheet.addRow(["Alora Analytics Export"]);
+    worksheet.addRow(["Time Range", timeRange.toUpperCase()]);
+    worksheet.addRow(["Average Mood", `${analyticsData.patterns.averageMood.toFixed(1)} / 5.0`]);
+    worksheet.addRow(["Peak Condition", analyticsData.patterns.bestDay]);
+    worksheet.addRow(["Period Growth", `+${analyticsData.patterns.improvement}%`]);
+    worksheet.addRow(["Total Logs", analyticsData.logs.length.toString()]);
+    worksheet.addRow([]);
+    worksheet.addRow(["--- DETAILED LOGS ---"]);
+    worksheet.addRow(["Date", "Mood Score (1-5)", "Mood Label", "Emoji", "Emotion", "Triggers"]);
+
+    analyticsData.logs.forEach(log => {
+      worksheet.addRow([
+        log.date,
+        log.mood,
+        MOOD_LABELS[log.mood] || "Unknown",
+        MOOD_EMOJIS[log.mood] || "",
+        log.emotion.charAt(0).toUpperCase() + log.emotion.slice(1),
+        log.triggers.join(", ")
+      ]);
+    });
+    
+    // Make columns wider for readability
+    worksheet.columns = [
+      { width: 15 }, // Date
+      { width: 20 }, // Mood Score
+      { width: 15 }, // Mood Label
+      { width: 8 },  // Emoji
+      { width: 15 }, // Emotion
+      { width: 40 }  // Triggers
+    ];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Alora_Report_${timeRange}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-7xl text-foreground min-h-screen">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
@@ -330,7 +379,7 @@ const AnalyticsPage = () => {
                 <SelectItem value="year">Yearly</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/60 dark:hover:bg-white/20 transition-colors">
+            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-white/60 dark:hover:bg-white/20 transition-colors" onClick={handleExportXLSX}>
               <Download className="h-5 w-5" />
             </Button>
           </div>

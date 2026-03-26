@@ -1,3 +1,0 @@
-tombol ekspor yg di stats blm bekerja export csv atau excel 
-data ga kesimpan ketika logout apa krna ini lokal? harusnya engga sih krna kan terhubung lgsg ke firebase farisya
-hilangin emoji di readme

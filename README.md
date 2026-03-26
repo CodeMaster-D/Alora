@@ -1,4 +1,4 @@
-# 🌿 Alora - Mental Wellness Platform
+# Alora - Mental Wellness Platform
 
 ![Alora](public/assets/hero4.png)
 
@@ -6,22 +6,22 @@
 
 ---
 
-## ✨ Features
+## Features
 
 | Feature | Description |
 | --- | --- |
-| 🧘 **Breathing Rituals** | Guided breathing exercises (Box, 4-7-8, etc.) with animated visual timer and optional audio cues |
-| 📖 **Mood Journal** | Daily mood check-ins with emoji selection, emotion tags, custom notes, and grouped history view |
-| 🗒 **Reflective Journal** | Rich text journal entries with tags, mood annotation, privacy toggle, and voice-to-text input |
-| 📊 **Analytics** | Mood trajectory charts, distribution pie chart, and factor correlation analysis |
-| 🏅 **Daily Streak** | Server-side streak calculation via Firebase Admin SDK, persisted in Zustand |
-| ♿ **Accessibility** | High Contrast mode, Reduced Motion, font switching (OpenDyslexic / Atkinson Hyperlegible), keyboard navigation |
-| 🌙 **Dark / Light Mode** | Full dark mode via `next-themes`, synchronized with system preference |
-| 📬 **Contact Form** | Landing page contact form that persists messages to Firestore |
+| **Breathing Rituals** | Guided breathing exercises (Box, 4-7-8, etc.) with animated visual timer and optional audio cues |
+| **Mood Journal** | Daily mood check-ins with emoji selection, emotion tags, custom notes, and grouped history view |
+| **Reflective Journal** | Rich text journal entries with tags, mood annotation, privacy toggle, and voice-to-text input |
+| **Analytics** | Mood trajectory charts, distribution pie chart, and factor correlation analysis |
+| **Daily Streak** | Server-side streak calculation via Firebase Admin SDK, persisted in Zustand |
+| **Accessibility** | High Contrast mode, Reduced Motion, font switching (OpenDyslexic / Atkinson Hyperlegible), keyboard navigation |
+| **Dark / Light Mode** | Full dark mode via `next-themes`, synchronized with system preference |
+| **Contact Form** | Landing page contact form that persists messages to Firestore |
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 | --- | --- |
@@ -38,7 +38,7 @@
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Clone the repository
 
@@ -118,7 +118,7 @@ service cloud.firestore {
 }
 ```
 
-> ⚠️ **Important**: The rules split `read` into `get` and `list`. This is required because Firestore list queries have `resource == null`, so checking `resource.data.userId` in a generic `read` rule always fails.
+> ️ **Important**: The rules split `read` into `get` and `list`. This is required because Firestore list queries have `resource == null`, so checking `resource.data.userId` in a generic `read` rule always fails.
 
 ### 4. Run Locally
 
@@ -130,7 +130,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📱 Application Flow
+## Application Flow
 
 ```text
 Landing Page (/)
@@ -148,7 +148,7 @@ Dashboard (/dashboard)
 
 ---
 
-## 🏗 Project Structure
+## Project Structure
 
 ```text
 src/
@@ -174,22 +174,22 @@ src/
 
 ---
 
-## ♿ Accessibility Features (WCAG 2.1)
+## Accessibility Features (WCAG 2.1)
 
 The **Floating Accessibility Toolbar** (bottom-right corner) provides:
 
-- 🌗 **High Contrast Mode** - increases colour contrast ratios across the entire UI
-- 🐢 **Reduced Motion** - disables all Framer Motion animations
-- 🔤 **Font: OpenDyslexic** - dyslexia-friendly typeface
-- 🔤 **Font: Atkinson Hyperlegible** - designed for low-vision readers
-- 🔠 **Font Size** - Small / Medium / Large presets
+- **High Contrast Mode** - increases colour contrast ratios across the entire UI
+- **Reduced Motion** - disables all Framer Motion animations
+- **Font: OpenDyslexic** - dyslexia-friendly typeface
+- **Font: Atkinson Hyperlegible** - designed for low-vision readers
+- **Font Size** - Small / Medium / Large presets
 - Keyboard focus rings visible on all interactive elements
 - Semantic HTML structure throughout
 - `aria-label` attributes on all icon-only buttons
 
 ---
 
-## 🔐 Authentication Notes
+## Authentication Notes
 
 - Email/Password and Google Sign-In are supported.
 - On registration, a `users/{uid}` document is created in Firestore with default preferences.
@@ -198,6 +198,6 @@ The **Floating Accessibility Toolbar** (bottom-right corner) provides:
 
 ---
 
-## 📝 License
+## License
 
-MIT - Built with ❤️ for Alora.
+MIT - Built with ️<3 for Alora.

@@ -6,12 +6,8 @@ import {
 } from "framer-motion";
 import { Heart, Activity, Shield, PieChart as PieIcon, BarChart3 } from "lucide-react";
 import { 
-  AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip,
-  TooltipProps 
+  AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip
 } from "recharts";
-import { 
-  ValueType, NameType 
-} from "recharts/types/component/DefaultTooltipContent";
 
 // --- Types ---
 interface MoodData {
@@ -83,7 +79,7 @@ function Counter({ value, duration = 5, trigger }: { value: number, duration?: n
  * Menggunakan casting 'as ChartPayload' untuk akses property date/day
  */
 // 2. Gunakan fungsi standar tanpa destructuring di parameter
-const CustomTooltip = (props: TooltipProps<ValueType, NameType>) => {
+const CustomTooltip = (props: { active?: boolean; payload?: Array<{ value: number; payload: ChartPayload }> }) => {
   // Ambil value-nya dari props secara aman
   const { active, payload } = props;
 
@@ -123,7 +119,8 @@ export function DashboardSection() {
   const opacityValue = useTransform(scrollYProgress, [0, 0.3], [0, 1]);
 
   useEffect(() => { 
-    setIsMounted(true); 
+    const timer = setTimeout(() => setIsMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
