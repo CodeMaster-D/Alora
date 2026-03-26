@@ -75,6 +75,7 @@ export function Sidebar() {
 
   return (
     <TooltipProvider delayDuration={0}>
+      {/* DESKTOP SIDEBAR */}
       <div className={cn(
         "hidden md:relative md:block h-screen transition-all duration-500 z-50",
         isCollapsed ? "w-20" : "w-72"
@@ -144,7 +145,6 @@ export function Sidebar() {
                       </Link>
                     </TooltipTrigger>
                     
-                    {/* Tooltip Fix: Warna disesuaikan dengan Toolbar lo */}
                     {isCollapsed && (
                       <TooltipContent 
                         side="right" 
@@ -211,7 +211,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* MOBILE NAV */}
+      {/* MOBILE NAV - UPDATED WITH HORIZONTAL SCROLL */}
       <motion.nav 
         initial="hidden"
         animate="visible"
@@ -221,60 +221,74 @@ export function Sidebar() {
         }}
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2"
       >
-        {/* Dikembalikan ke settingan awal lo: justify-start, w-fit, ml-2 */}
-        <div className="bg-card/70 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full h-14 flex items-center justify-start gap-2 px-3 ml-2 w-fit">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <motion.div
-                key={item.name}
-                variants={{
-                  hidden: { opacity: 0, x: -20 },
-                  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 20 } }
-                }}
-              >
-                <Link href={item.href} className="relative flex flex-col items-center justify-center w-10 h-10">
-                  {isActive && (
-                    <motion.div layoutId="activeTabMobile" className="absolute inset-0 bg-primary rounded-full -z-10" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
-                  )}
-                  <item.icon className={cn("h-5 w-5 transition-colors duration-200", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
-                </Link>
-              </motion.div>
-            );
-          })}
-
-          {/* Profile / Logout Section Mobile ditambahkan di dalam sini */}
-          <motion.div 
-            variants={{
-              hidden: { opacity: 0, scale: 0.8 },
-              visible: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
-            }}
-            className="flex items-center pl-1 border-l border-white/20"
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="relative flex items-center justify-center w-10 h-10 rounded-full focus:outline-none outline-none">
-                  <Avatar className="h-8 w-8 border-2 border-transparent active:scale-95 transition-all shadow-md">
-                    <AvatarImage src={user?.photoURL || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                      {user?.displayName?.charAt(0) || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute bottom-0 right-1 h-2.5 w-2.5 bg-green-500 border-2 border-card rounded-full" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" sideOffset={20} align="end" className="rounded-2xl backdrop-blur-xl bg-card/80 border-white/20 w-48 shadow-2xl border mb-2">
-                <DropdownMenuItem 
-                  onClick={handleLogout} 
-                  disabled={isLoading}
-                  className="text-destructive rounded-xl m-1 font-medium focus:bg-destructive/10 cursor-pointer transition-colors"
+        <div className={cn(
+          "bg-card/70 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full h-14",
+          "flex items-center justify-start ml-2",
+          "w-fit max-w-[calc(100vw-6rem)] overflow-x-auto no-scrollbar select-none"
+        )}>
+          {/* Flex container di dalam untuk menjaga padding dan gap agar tidak hancur saat scroll */}
+          <div className="flex items-center gap-2 px-3 shrink-0">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <motion.div
+                  key={item.name}
+                  variants={{
+                    hidden: { opacity: 0, x: -20 },
+                    visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 20 } }
+                  }}
+                  className="shrink-0" // Penting: mencegah icon mengecil
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </motion.div>
+                  <Link href={item.href} className="relative flex flex-col items-center justify-center w-10 h-10">
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTabMobile" 
+                        className="absolute inset-0 bg-primary rounded-full -z-10" 
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} 
+                      />
+                    )}
+                    <item.icon className={cn(
+                      "h-5 w-5 transition-colors duration-200", 
+                      isActive ? "text-primary-foreground" : "text-muted-foreground"
+                    )} />
+                  </Link>
+                </motion.div>
+              );
+            })}
+
+            {/* Profile Section Mobile - Di dalam scroll container */}
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, scale: 0.8 },
+                visible: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
+              }}
+              className="flex items-center pl-1 border-l border-white/20 shrink-0"
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="relative flex items-center justify-center w-10 h-10 rounded-full focus:outline-none outline-none">
+                    <Avatar className="h-8 w-8 border-2 border-transparent active:scale-95 transition-all shadow-md">
+                      <AvatarImage src={user?.photoURL || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                        {user?.displayName?.charAt(0) || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute bottom-0 right-1 h-2.5 w-2.5 bg-green-500 border-2 border-card rounded-full" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" sideOffset={20} align="end" className="rounded-2xl backdrop-blur-xl bg-card/80 border-white/20 w-48 shadow-2xl border mb-2">
+                  <DropdownMenuItem 
+                    onClick={handleLogout} 
+                    disabled={isLoading}
+                    className="text-destructive rounded-xl m-1 font-medium focus:bg-destructive/10 cursor-pointer transition-colors"
+                  >
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </motion.div>
+          </div>
         </div>
       </motion.nav>
     </TooltipProvider>
