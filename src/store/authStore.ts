@@ -209,29 +209,29 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await firebaseService.auth.getCurrentUser();
           
-          if (response.success && response.data) {
-            set({ 
-              user: response.data, 
-              isAuthenticated: true, 
-              isLoading: false 
-            });
-            setAuthCookie('true');
+          if (response.success) {
+            if (response.data) {
+              set({ 
+                user: response.data, 
+                isAuthenticated: true, 
+                isLoading: false 
+              });
+              setAuthCookie('true');
+            } else {
+              set({ 
+                user: null, 
+                isAuthenticated: false, 
+                isLoading: false 
+              });
+              removeAuthCookie();
+            }
           } else {
-            set({ 
-              user: null, 
-              isAuthenticated: false, 
-              isLoading: false 
-            });
-            removeAuthCookie();
+            console.warn("Check auth failed with error from Firebase, ignoring to prevent unwanted logout:", response.error);
+            set({ isLoading: false });
           }
         } catch (error) {
-          console.error("Check auth error:", error);
-          set({ 
-            user: null, 
-            isAuthenticated: false, 
-            isLoading: false 
-          });
-          removeAuthCookie();
+          console.error("Check auth exception:", error);
+          set({ isLoading: false });
         }
 
         // Jalankan update streak setelah auth check selesai
