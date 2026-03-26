@@ -221,6 +221,7 @@ export function Sidebar() {
         }}
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2"
       >
+        {/* Dikembalikan ke settingan awal lo: justify-start, w-fit, ml-2 */}
         <div className="bg-card/70 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full h-14 flex items-center justify-start gap-2 px-3 ml-2 w-fit">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
@@ -241,6 +242,39 @@ export function Sidebar() {
               </motion.div>
             );
           })}
+
+          {/* Profile / Logout Section Mobile ditambahkan di dalam sini */}
+          <motion.div 
+            variants={{
+              hidden: { opacity: 0, scale: 0.8 },
+              visible: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }
+            }}
+            className="flex items-center pl-1 border-l border-white/20"
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="relative flex items-center justify-center w-10 h-10 rounded-full focus:outline-none outline-none">
+                  <Avatar className="h-8 w-8 border-2 border-transparent active:scale-95 transition-all shadow-md">
+                    <AvatarImage src={user?.photoURL || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                      {user?.displayName?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute bottom-0 right-1 h-2.5 w-2.5 bg-green-500 border-2 border-card rounded-full" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" sideOffset={20} align="end" className="rounded-2xl backdrop-blur-xl bg-card/80 border-white/20 w-48 shadow-2xl border mb-2">
+                <DropdownMenuItem 
+                  onClick={handleLogout} 
+                  disabled={isLoading}
+                  className="text-destructive rounded-xl m-1 font-medium focus:bg-destructive/10 cursor-pointer transition-colors"
+                >
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </motion.div>
         </div>
       </motion.nav>
     </TooltipProvider>
