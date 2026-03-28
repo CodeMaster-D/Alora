@@ -24,48 +24,58 @@ export async function GET(req: NextRequest) {
     switch (mode) {
       case "signIn":
       case "verifyEmail": {
-        const actionInfo = await verifyActionCode(oobCode);
         const userRecord = await applyActionCode(oobCode);
-        
         await updateUserEmailVerified(userRecord.uid, true);
 
         return NextResponse.json({
           success: true,
           mode: "verifyEmail",
-          email: actionInfo.email,
+          uid: userRecord.uid,
           message: "Email verified successfully"
         });
       }
 
       case "resetPassword": {
-        const actionInfo = await verifyActionCode(oobCode);
-        return NextResponse.json({
-          success: true,
-          mode: "resetPassword",
-          email: actionInfo.email,
-          continueUrl: searchParams.get("continueUrl")
-        });
+        try {
+          const actionInfo = await verifyActionCode(oobCode);
+          return NextResponse.json({
+            success: true,
+            mode: "resetPassword",
+            email: actionInfo.email || searchParams.get("continueUrl")?.split("continueUrl=")[1] || "",
+            continueUrl: searchParams.get("continueUrl")
+          });
+        } catch {
+          return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 });
+        }
       }
 
       case "recoverEmail": {
-        const actionInfo = await verifyActionCode(oobCode);
-        return NextResponse.json({
-          success: true,
-          mode: "recoverEmail",
-          previousEmail: actionInfo.previousEmail,
-          newEmail: actionInfo.newEmail,
-          message: "Email recovery information retrieved"
-        });
+        try {
+          const actionInfo = await verifyActionCode(oobCode);
+          return NextResponse.json({
+            success: true,
+            mode: "recoverEmail",
+            previousEmail: actionInfo.previousEmail,
+            newEmail: actionInfo.newEmail,
+            message: "Email recovery information retrieved"
+          });
+        } catch {
+          return NextResponse.json({ error: "Invalid or expired recovery link" }, { status: 400 });
+        }
       }
 
       case "verifyAndChangeEmail": {
-        const actionInfo = await verifyActionCode(oobCode);
-        return NextResponse.json({
-          success: true,
-          mode: "verifyAndChangeEmail",
-          newEmail: actionInfo.newEmail,
-          message: "New email verification successful"
-        });
+        try {
+          const actionInfo = await verifyActionCode(oobCode);
+          return NextResponse.json({
+            success: true,
+            mode: "verifyAndChangeEmail",
+            newEmail: actionInfo.newEmail,
+            message: "New email verification successful"
+          });
+        } catch {
+          return NextResponse.json({ error: "Invalid or expired link" }, { status: 400 });
+        }
       }
 
       default:
@@ -97,44 +107,50 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
         }
 
-        const actionInfo = await verifyActionCode(oobCode);
-        if (!actionInfo.email) {
-          return NextResponse.json({ error: "Invalid action code" }, { status: 400 });
-        }
-        
-        const user = await getUserByEmail(actionInfo.email);
-        await updateUserPassword(user.uid, newPassword);
+        try {
+          const actionInfo = await verifyActionCode(oobCode);
+          if (!actionInfo.email) {
+            return NextResponse.json({ error: "Invalid action code" }, { status: 400 });
+          }
+          
+          const user = await getUserByEmail(actionInfo.email);
+          await updateUserPassword(user.uid, newPassword);
 
-        return NextResponse.json({
-          success: true,
-          mode: "resetPassword",
-          message: "Password reset successfully"
-        });
+          return NextResponse.json({
+            success: true,
+            mode: "resetPassword",
+            message: "Password reset successfully"
+          });
+        } catch {
+          return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 });
+        }
       }
 
       case "verifyAndChangeEmail": {
-        const userRecord = await applyActionCode(oobCode);
-        const actionInfo = await verifyActionCode(oobCode);
-        
-        if (actionInfo.newEmail) {
-          await updateUserEmailInFirestore(userRecord.uid, actionInfo.newEmail);
+        try {
+          const userRecord = await applyActionCode(oobCode);
+          return NextResponse.json({
+            success: true,
+            mode: "verifyAndChangeEmail",
+            uid: userRecord.uid,
+            message: "Email updated successfully"
+          });
+        } catch {
+          return NextResponse.json({ error: "Invalid or expired link" }, { status: 400 });
         }
-
-        return NextResponse.json({
-          success: true,
-          mode: "verifyAndChangeEmail",
-          newEmail: actionInfo.newEmail,
-          message: "Email updated successfully"
-        });
       }
 
       case "recoverEmail": {
-        await applyActionCode(oobCode);
-        return NextResponse.json({
-          success: true,
-          mode: "recoverEmail",
-          message: "Email recovered successfully"
-        });
+        try {
+          await applyActionCode(oobCode);
+          return NextResponse.json({
+            success: true,
+            mode: "recoverEmail",
+            message: "Email recovered successfully"
+          });
+        } catch {
+          return NextResponse.json({ error: "Invalid or expired link" }, { status: 400 });
+        }
       }
 
       default:
