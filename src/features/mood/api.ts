@@ -1,24 +1,26 @@
-import { adminDb } from "@/services/firebase/admin";
+import { getAdminDb } from "@/services/firebase/admin";
 import { MoodSchema } from "@/types/schemas";
 import * as admin from "firebase-admin";
 
-export async function addMoodEntry(userId: string, data: any) {
+export async function addMoodEntry(userId: string, data: unknown) {
   const validated = MoodSchema.parse(data);
 
   const entry = {
     userId,
     ...validated,
-    mood: Math.floor(validated.mood), // Guaranteed Integer
+    mood: Math.floor(validated.mood),
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   };
 
-  const docRef = await adminDb.collection("moods").add(entry);
+  const db = getAdminDb();
+  const docRef = await db.collection("moods").add(entry);
 
   return { id: docRef.id, ...entry };
 }
 
 export async function getMoodEntries(userId: string) {
-  const snapshot = await adminDb
+  const db = getAdminDb();
+  const snapshot = await db
     .collection("moods")
     .where("userId", "==", userId)
     .orderBy("timestamp", "desc")

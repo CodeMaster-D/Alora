@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/services/firebase/admin";
+import { getAdminDb } from "@/services/firebase/admin";
 
 export async function GET(req: NextRequest) {
   try {
-    // Admin SDK bypasses security rules, useful for master data like exercises
-    const snapshot = await adminDb.collection("breathing_exercises").get();
+    const db = getAdminDb();
+    const snapshot = await db.collection("breathing_exercises").get();
     
     const exercises = snapshot.docs.map(doc => ({
       id: doc.id,
@@ -16,11 +16,12 @@ export async function GET(req: NextRequest) {
       data: exercises 
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching breathing rituals via Admin SDK:", error);
+    const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json({ 
       success: false, 
-      error: error.message 
+      error: message 
     }, { status: 500 });
   }
 }

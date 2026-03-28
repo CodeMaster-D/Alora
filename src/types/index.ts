@@ -4,6 +4,7 @@ export interface User {
   email: string;
   displayName: string;
   photoURL?: string;
+  emailVerified?: boolean;
   createdAt: Date;
   lastLoginAt: Date;
   preferences: UserPreferences;

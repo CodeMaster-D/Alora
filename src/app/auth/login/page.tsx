@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { Eye, EyeOff, LogIn, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,14 +58,24 @@ export default function LoginPage() {
     
     setIsLoading(true);
     try {
-      const success = await login(formData.email, formData.password);
-      if (success) {
-        toast.success("Login Successful!");
-        router.push("/dashboard"); // Redirect manual untuk trigger client-side transition
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
+        if (result.needsVerification) {
+          toast.error("Please verify your email first.", {
+            description: "Check your inbox for the verification link.",
+            action: {
+              label: "Resend",
+              onClick: () => window.location.href = "/auth/verify-email",
+            },
+          });
+        } else {
+          toast.success("Login Successful!");
+          router.push("/dashboard");
+        }
       } else {
         toast.error("Invalid email or password.");
       }
-    } catch (error) {
+    } catch {
       toast.error("An error occurred while trying to log in.");
     } finally {
       setIsLoading(false);
@@ -82,7 +92,7 @@ export default function LoginPage() {
       } else {
         toast.error("Failed to login with Google.");
       }
-    } catch (error) {
+    } catch {
       toast.error("A system error occurred while trying to log in with Google.");
     } finally {
       setIsGoogleLoading(false);
@@ -164,6 +174,13 @@ export default function LoginPage() {
                   </>
                 )}
               </Button>
+              
+              <div className="text-center">
+                <Link href="/auth/forgot-password" className="text-sm text-[#D48C70] hover:text-[#D48C70]/80 transition-colors flex items-center justify-center gap-1">
+                  <KeyRound className="h-3 w-3" />
+                  Forgot Password?
+                </Link>
+              </div>
             </form>
 
             <div className="relative flex items-center py-2">
@@ -195,7 +212,7 @@ export default function LoginPage() {
             <div className="mt-6 text-center text-sm font-medium">
               <span className="text-foreground/50">Don&apos;t have an account? </span>
               <Link href="/auth/register" className="text-[#D48C70] hover:text-[#D48C70]/80 transition-colors">
-                register now
+                Register now
               </Link>
             </div>
           </CardContent>

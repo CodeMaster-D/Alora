@@ -20,16 +20,20 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  emailVerificationSent: boolean;
   
   // Actions
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; needsVerification?: boolean }>;
   loginWithGoogle: () => Promise<boolean>; 
-  register: (email: string, password: string, displayName: string) => Promise<boolean>;
+  register: (email: string, password: string, displayName: string) => Promise<{ success: boolean; verificationSent?: boolean }>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<boolean>;
   updatePreferences: (preferences: Partial<User["preferences"]>) => Promise<boolean>;
   checkAuth: () => Promise<void>;
   updateStreak: () => Promise<void>;
+  sendVerificationEmail: () => Promise<{ success: boolean; rateLimited?: boolean }>;
+  checkEmailVerified: () => Promise<boolean>;
+  clearVerificationSent: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -38,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isLoading: false,
       isAuthenticated: false,
+      emailVerificationSent: false,
       
       login: async (email: string, password: string) => {
         set({ isLoading: true });
@@ -46,22 +51,22 @@ export const useAuthStore = create<AuthState>()(
           const response = await firebaseService.auth.login({ email, password });
           
           if (response.success && response.data) {
+            const needsVerification = response.data.emailVerified === false;
             set({ 
               user: response.data, 
               isAuthenticated: true, 
               isLoading: false 
             });
-            // Set Cookie pas login sukses
             setAuthCookie('true');
-            return true;
+            return { success: true, needsVerification };
           } else {
             set({ isLoading: false });
-            return false;
+            return { success: false };
           }
         } catch (error) {
           console.error("Login error:", error);
           set({ isLoading: false });
-          return false;
+          return { success: false };
         }
       },
       
@@ -109,17 +114,32 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true, 
               isLoading: false 
             });
-            // Set Cookie pas register sukses (langsung login)
             setAuthCookie('true');
-            return true;
+
+            try {
+              const emailResponse = await fetch("/api/email/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "verification",
+                  email: email,
+                  name: displayName,
+                }),
+              });
+              const emailData = await emailResponse.json();
+              set({ emailVerificationSent: emailData.success });
+              return { success: true, verificationSent: emailData.success };
+            } catch {
+              return { success: true, verificationSent: false };
+            }
           } else {
             set({ isLoading: false });
-            return false;
+            return { success: false };
           }
         } catch (error) {
           console.error("Registration error:", error);
           set({ isLoading: false });
-          return false;
+          return { success: false };
         }
       },
       
@@ -254,6 +274,58 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           console.error("Failed to update streak:", error);
         }
+      },
+
+      sendVerificationEmail: async (): Promise<{ success: boolean; rateLimited?: boolean }> => {
+        try {
+          const { user } = get();
+          if (!user) return { success: false };
+
+          const response = await fetch("/api/email/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "verification",
+              email: user.email,
+              name: user.displayName,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            set({ emailVerificationSent: true });
+            return { success: true };
+          }
+          if (data.error?.includes("too-many-requests") || data.error?.includes("quota")) {
+            return { success: false, rateLimited: true };
+          }
+          return { success: false };
+        } catch (error) {
+          console.error("Send verification email error:", error);
+          return { success: false };
+        }
+      },
+
+      checkEmailVerified: async () => {
+        try {
+          const response = await firebaseService.auth.checkEmailVerified();
+          if (response.success && response.data !== undefined) {
+            const { user } = get();
+            if (user) {
+              set({ user: { ...user, emailVerified: response.data } });
+            }
+            return response.data;
+          }
+          return false;
+        } catch (error) {
+          console.error("Check email verified error:", error);
+          return false;
+        }
+      },
+
+      clearVerificationSent: () => {
+        set({ emailVerificationSent: false });
       },
     }),
     {

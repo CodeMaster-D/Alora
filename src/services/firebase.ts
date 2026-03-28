@@ -19,7 +19,10 @@ import {
   updatePassword,
   deleteUser,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  sendEmailVerification,
+  applyActionCode,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { 
   collection, 
@@ -70,7 +73,14 @@ export const authService = {
       const userDoc = await getDoc(doc(db, "users", fbUser.uid));
       if (!userDoc.exists()) throw new Error("User document not found");
       
-      return { success: true, data: userDoc.data() as User };
+      const userData = userDoc.data() as User;
+      return { 
+        success: true, 
+        data: { 
+          ...userData, 
+          emailVerified: fbUser.emailVerified 
+        } 
+      };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -89,6 +99,7 @@ export const authService = {
           email: fbUser.email || "",
           displayName: fbUser.displayName || "",
           photoURL: fbUser.photoURL || undefined,
+          emailVerified: fbUser.emailVerified,
           createdAt: new Date(),
           lastLoginAt: new Date(),
           preferences: {
@@ -122,6 +133,7 @@ export const authService = {
         id: fbUser.uid,
         email: data.email,
         displayName: data.displayName,
+        emailVerified: false,
         createdAt: new Date(),
         lastLoginAt: new Date(),
         preferences: {
@@ -244,6 +256,56 @@ export const authService = {
       if (!response.ok) throw new Error(data.error);
       
       return { success: true, data: { streak: data.streak } };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  sendVerificationEmail: async (): Promise<ApiResponse<void>> => {
+    try {
+      const fbUser = auth.currentUser;
+      if (!fbUser) throw new Error("No user logged in");
+      
+      if (fbUser.emailVerified) {
+        return { success: false, error: "Email already verified" };
+      }
+      
+      await sendEmailVerification(fbUser);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  verifyEmail: async (actionCode: string): Promise<ApiResponse<void>> => {
+    try {
+      await applyActionCode(auth, actionCode);
+      
+      const fbUser = auth.currentUser;
+      if (fbUser) {
+        await updateDoc(doc(db, "users", fbUser.uid), { emailVerified: true });
+      }
+      
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  checkEmailVerified: async (): Promise<ApiResponse<boolean>> => {
+    try {
+      const fbUser = auth.currentUser;
+      if (!fbUser) throw new Error("No user logged in");
+      return { success: true, data: fbUser.emailVerified };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  sendPasswordReset: async (email: string): Promise<ApiResponse<void>> => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, UserPlus, Sparkles, ChevronRight } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Mail, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -64,19 +65,23 @@ export default function RegisterPage() {
     setIsLoading(true);
     
     try {
-      const success = await register(formData.email, formData.password, formData.displayName);
+      const result = await register(formData.email, formData.password, formData.displayName);
       
-      if (success) {
-        toast.success("Akun Berhasil Dibuat!", {
-          description: "Selamat datang di komunitas Alora.",
-        });
-        router.push("/dashboard");
+      if (result.success) {
+        if (result.verificationSent) {
+          setVerificationSent(true);
+        } else {
+          toast.success("Akun Berhasil Dibuat!", {
+            description: "Selamat datang di komunitas Alora.",
+          });
+          router.push("/dashboard");
+        }
       } else {
         toast.error("Registrasi Gagal", {
           description: "Terjadi kendala saat membuat akun Anda. Coba beberapa saat lagi.",
         });
       }
-    } catch (error) {
+    } catch {
       toast.error("Kesalahan sistem saat pendaftaran.");
     } finally {
       setIsLoading(false);
@@ -203,10 +208,47 @@ export default function RegisterPage() {
                 </Button>
               </div>
             </form>
+            
+            {verificationSent && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-green-800 dark:text-green-200">Check Your Email!</h3>
+                    <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+                      We&apos;ve sent a verification link to <span className="font-medium">{formData.email}</span>. 
+                      Please click the link to verify your account before accessing all features.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-3">
+                  <Button
+                    onClick={() => window.location.href = "/auth/verify-email"}
+                    variant="outline"
+                    className="flex-1 h-10 rounded-xl border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Open Email Link
+                  </Button>
+                  <Button
+                    onClick={() => window.location.href = "/auth/login"}
+                    className="flex-1 h-10 rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    Sign In
+                  </Button>
+                </div>
+              </motion.div>
+            )}
             <div className="mt-8 text-center text-sm font-medium">
               <span className="text-foreground/50">Already have an account? </span>
               <Link href="/auth/login" className="text-[#D48C70] hover:text-[#D48C70]/80 transition-colors">
-                Sign In <ChevronRight className="h-3 w-3 ml-0.5" />
+                Sign In
               </Link>
             </div>
           </CardContent>
