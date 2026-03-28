@@ -9,7 +9,7 @@ import {
   getAdminDb
 } from "@/services/firebase/admin";
 
-type ActionMode = "verifyEmail" | "resetPassword" | "recoverEmail" | "verifyAndChangeEmail";
+type ActionMode = "verifyEmail" | "resetPassword" | "recoverEmail" | "verifyAndChangeEmail" | "signIn";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
 
   try {
     switch (mode) {
+      case "signIn":
       case "verifyEmail": {
         const actionInfo = await verifyActionCode(oobCode);
         const userRecord = await applyActionCode(oobCode);

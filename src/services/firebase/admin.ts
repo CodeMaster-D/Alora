@@ -103,18 +103,60 @@ export interface ActionCodeResult {
 }
 
 export async function verifyActionCode(oobCode: string): Promise<ActionCodeResult> {
-  const auth = getAdminAuth() as unknown as Record<string, Function>;
-  const actionCode = await (auth.verifyActionCode as (code: string) => Promise<Record<string, unknown>>)(oobCode);
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey) {
+    throw new Error("NEXT_PUBLIC_FIREBASE_API_KEY is not configured");
+  }
+  
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        oobCode: oobCode,
+        oobVerificationMode: "GET_OOB_CODE",
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || "Failed to verify action code");
+  }
+
+  const data = await response.json();
   return {
-    email: actionCode.email as string,
-    previousEmail: actionCode.previousEmail as string,
-    newEmail: actionCode.newEmail as string,
+    email: data.email,
+    previousEmail: data.previousEmail,
+    newEmail: data.newEmail,
   };
 }
 
-export async function applyActionCode(oobCode: string): Promise<admin.auth.UserRecord> {
-  const auth = getAdminAuth() as unknown as Record<string, Function>;
-  return (auth.applyActionCode as (code: string) => Promise<admin.auth.UserRecord>)(oobCode);
+export async function applyActionCode(oobCode: string): Promise<{ uid: string }> {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey) {
+    throw new Error("NEXT_PUBLIC_FIREBASE_API_KEY is not configured");
+  }
+  
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        oobCode: oobCode,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || "Failed to apply action code");
+  }
+
+  const data = await response.json();
+  return { uid: data.localId };
 }
 
 export async function getUserByEmail(email: string): Promise<admin.auth.UserRecord> {
