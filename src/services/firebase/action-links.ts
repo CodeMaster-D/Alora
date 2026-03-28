@@ -1,10 +1,4 @@
-import { getAdminAuth } from "@/services/firebase/admin";
-
-const FIREBASE_REST_API = "https://identitytoolkit.googleapis.com/v1/accounts:oobConfighttp";
-
-interface FirebaseApiKey {
-  apiKey: string;
-}
+const FIREBASE_REST_API = "https://identitytoolkit.googleapis.com/v1/accounts:oobConfig";
 
 function getFirebaseApiKey(): string {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
