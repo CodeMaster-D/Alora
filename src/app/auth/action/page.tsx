@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { 
   CheckCircle, 
@@ -34,12 +33,14 @@ interface ActionData {
 }
 
 function ActionHandlerContent() {
-  const searchParams = useSearchParams();
-  const oobCode = searchParams.get("oobCode");
-  const mode = searchParams.get("mode") as ActionMode | null;
-  
-  const { checkEmailVerified, sendVerificationEmail } = useAuthStore();
-  
+  const [urlParams, setUrlParams] = useState<{ mode: string | null; oobCode: string | null; continueUrl: string | null }>({
+    mode: null,
+    oobCode: null,
+    continueUrl: null,
+  });
+
+  const { reloadAndSyncVerification, sendVerificationEmail } = useAuthStore();
+
   const [status, setStatus] = useState<Status>("loading");
   const [actionData, setActionData] = useState<ActionData | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -47,47 +48,79 @@ function ActionHandlerContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setUrlParams({
+      mode: params.get("mode"),
+      oobCode: params.get("oobCode"),
+      continueUrl: params.get("continueUrl"),
+    });
+  }, []);
+
+  useEffect(() => {
+    const { mode, oobCode, continueUrl } = urlParams;
+    
     const handleAction = async () => {
       if (!mode || !oobCode) {
+        console.log("[Auth Action Page] Missing params, showing error");
         setStatus("error");
         setActionData({ mode: "verifyEmail", error: "Missing action code or mode" });
         return;
       }
 
+      if (processedRef.current) {
+        console.log("[Auth Action Page] Already processed, skipping");
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/auth/action?oobCode=${oobCode}&mode=${mode}`);
+        const apiUrl = `/api/auth/action?oobCode=${oobCode}&mode=${mode}`;
+        console.log("[Auth Action Page] Calling API:", apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          credentials: "include"
+        });
+        console.log("[Auth Action Page] Response status:", response.status);
         const data = await response.json();
+        console.log("[Auth Action Page] Response data:", data);
 
         if (data.success) {
+          processedRef.current = true;
           setActionData({
-            mode: data.mode,
-            email: data.email,
-            previousEmail: data.previousEmail,
-            newEmail: data.newEmail,
-            continueUrl: data.continueUrl
+            mode: data.mode as ActionMode,
+            email: data.email as string | undefined,
+            previousEmail: data.previousEmail as string | undefined,
+            newEmail: data.newEmail as string | undefined,
+            continueUrl: data.continueUrl as string | undefined || continueUrl || "/dashboard"
           });
           setStatus(data.mode === "resetPassword" ? "pending" : "success");
           
           if (data.mode === "verifyEmail") {
-            await checkEmailVerified();
+            await reloadAndSyncVerification();
             toast.success("Email verified successfully!");
           }
+        } else if (data.needsAuth) {
+          sessionStorage.setItem("pendingVerification", JSON.stringify({ oobCode, mode }));
+          toast.error("Please sign in to verify your email");
+          window.location.href = "/auth/login";
         } else {
           setStatus("error");
-          setActionData({ mode, error: data.error });
+          setActionData({ mode: mode as ActionMode, error: data.error });
           toast.error(data.error || "Action failed");
         }
       } catch {
         setStatus("error");
-        setActionData({ mode, error: "Failed to process action" });
+        setActionData({ mode: mode as ActionMode, error: "Failed to process action" });
         toast.error("Failed to process action");
       }
     };
 
-    handleAction();
-  }, [oobCode, mode, checkEmailVerified]);
+    if (mode && oobCode) {
+      handleAction();
+    }
+  }, [urlParams, reloadAndSyncVerification]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +135,7 @@ function ActionHandlerContent() {
       return;
     }
 
-    if (!oobCode) return;
+    if (!urlParams.oobCode) return;
 
     setIsLoading(true);
 
@@ -111,7 +144,7 @@ function ActionHandlerContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          oobCode,
+          oobCode: urlParams.oobCode,
           mode: "resetPassword",
           newPassword
         })
@@ -134,7 +167,7 @@ function ActionHandlerContent() {
   };
 
   const handleRecoverEmail = async () => {
-    if (!oobCode) return;
+    if (!urlParams.oobCode) return;
 
     setIsLoading(true);
 
@@ -143,7 +176,7 @@ function ActionHandlerContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          oobCode,
+          oobCode: urlParams.oobCode,
           mode: "recoverEmail"
         })
       });
@@ -424,10 +457,10 @@ function ActionHandlerContent() {
 
               <div className="w-full space-y-3">
                 <Button
-                  onClick={() => window.location.href = "/dashboard"}
+                  onClick={() => window.location.href = actionData?.continueUrl || "/dashboard"}
                   className="w-full h-12 rounded-2xl bg-[#D48C70] hover:bg-[#D48C70]/90 text-white"
                 >
-                  Go to Dashboard
+                  Continue
                 </Button>
                 <Button
                   variant="outline"

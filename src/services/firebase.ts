@@ -302,6 +302,17 @@ export const authService = {
     }
   },
 
+  reloadCurrentUser: async (): Promise<ApiResponse<boolean>> => {
+    try {
+      const fbUser = auth.currentUser;
+      if (!fbUser) throw new Error("No user logged in");
+      await fbUser.reload();
+      return { success: true, data: fbUser.emailVerified };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
   sendPasswordReset: async (email: string): Promise<ApiResponse<void>> => {
     try {
       await sendPasswordResetEmail(auth, email);

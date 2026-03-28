@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, UserPlus, Mail, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, UserPlus, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -216,25 +216,9 @@ export default function RegisterPage() {
                     <h3 className="font-semibold text-green-800 dark:text-green-200">Check Your Email!</h3>
                     <p className="mt-1 text-sm text-green-700 dark:text-green-300">
                       We&apos;ve sent a verification link to <span className="font-medium">{formData.email}</span>. 
-                      Please click the link to verify your account before accessing all features.
+                      Please click the link in your email to verify your account.
                     </p>
                   </div>
-                </div>
-                <div className="mt-4 flex gap-3">
-                  <Button
-                    onClick={() => window.location.href = "/auth/verify-email"}
-                    variant="outline"
-                    className="flex-1 h-10 rounded-xl border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40"
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Open Email Link
-                  </Button>
-                  <Button
-                    onClick={() => window.location.href = "/auth/login"}
-                    className="flex-1 h-10 rounded-xl bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    Sign In
-                  </Button>
                 </div>
               </motion.div>
             )}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateEmailVerificationLink, generatePasswordResetLink } from "@/services/firebase/action-links";
+import { generateEmailVerificationLink, generatePasswordResetLink } from "@/services/firebase/admin";
 
 async function sendEmail(type: "verification" | "password_reset", email: string, name: string, link: string) {
   const isDevelopment = process.env.NODE_ENV === "development" || process.env.USE_ETHEREAL === "true";

@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { User } from "@/types";
 import { firebaseService } from "../services/firebase";
+import { auth } from "@/services/firebase/client";
+import { getIdToken } from "firebase/auth";
 
 // Helper untuk set dan hapus cookie (agar terbaca oleh Middleware)
 const setAuthCookie = (value: string) => {
@@ -33,6 +35,8 @@ interface AuthState {
   updateStreak: () => Promise<void>;
   sendVerificationEmail: () => Promise<{ success: boolean; rateLimited?: boolean }>;
   checkEmailVerified: () => Promise<boolean>;
+  reloadAndSyncVerification: () => Promise<boolean>;
+  syncEmailVerifiedToFirestore: (userId: string) => Promise<boolean>;
   clearVerificationSent: () => void;
 }
 
@@ -327,6 +331,69 @@ export const useAuthStore = create<AuthState>()(
           return false;
         } catch (error) {
           console.error("Check email verified error:", error);
+          return false;
+        }
+      },
+
+      syncEmailVerifiedToFirestore: async (userId: string) => {
+        try {
+          const fbUser = auth.currentUser;
+          if (!fbUser) return false;
+          
+          const idToken = await getIdToken(fbUser);
+          
+          const response = await fetch("/api/auth/action", {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${idToken}`
+            },
+            body: JSON.stringify({
+              mode: "syncVerification",
+              userId
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            const { user } = get();
+            if (user && data.emailVerified) {
+              set({ user: { ...user, emailVerified: true } });
+            }
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error("Sync email verified error:", error);
+          return false;
+        }
+      },
+
+      reloadAndSyncVerification: async () => {
+        try {
+          console.log("[AuthStore] Reloading current user...");
+          const response = await firebaseService.auth.reloadCurrentUser();
+          console.log("[AuthStore] Reload response:", response);
+          
+          if (response.success && response.data !== undefined) {
+            const { user } = get();
+            console.log("[AuthStore] Current user:", user?.id, "emailVerified:", response.data);
+            if (user) {
+              const updatedUser = { ...user, emailVerified: response.data };
+              set({ user: updatedUser });
+              
+              if (response.data) {
+                console.log("[AuthStore] Syncing verification to Firestore...");
+                await get().syncEmailVerifiedToFirestore(user.id);
+              }
+            }
+            return response.data;
+          }
+          console.log("[AuthStore] Reload failed, returning false");
+          return false;
+        } catch (error) {
+          console.error("Reload and sync error:", error);
           return false;
         }
       },

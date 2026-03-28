@@ -95,103 +95,6 @@ export const updateStreak = async (userId: string) => {
   return updated.data();
 };
 
-// Auth action handlers for Vercel serverless functions
-export interface ActionCodeResult {
-  email?: string;
-  previousEmail?: string;
-  newEmail?: string;
-}
-
-export async function verifyActionCode(oobCode: string): Promise<ActionCodeResult> {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error("NEXT_PUBLIC_FIREBASE_API_KEY is not configured");
-  }
-  
-  const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        oobCode: oobCode,
-        oobVerificationMode: "GET_OOB_CODE",
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || "Failed to verify action code");
-  }
-
-  const data = await response.json();
-  return {
-    email: data.email,
-    previousEmail: data.previousEmail,
-    newEmail: data.newEmail,
-  };
-}
-
-export async function applyActionCode(oobCode: string): Promise<{ uid: string }> {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!apiKey) {
-    throw new Error("NEXT_PUBLIC_FIREBASE_API_KEY is not configured");
-  }
-  
-  const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        oobCode: oobCode,
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || "Failed to apply action code");
-  }
-
-  const data = await response.json();
-  return { uid: data.localId };
-}
-
-export async function getUserByEmail(email: string): Promise<admin.auth.UserRecord> {
-  const auth = getAdminAuth();
-  return auth.getUserByEmail(email);
-}
-
-export async function updateUserPassword(uid: string, newPassword: string): Promise<void> {
-  const auth = getAdminAuth();
-  await auth.updateUser(uid, { password: newPassword });
-}
-
-export async function updateUserEmail(uid: string, email: string): Promise<void> {
-  const auth = getAdminAuth();
-  await auth.updateUser(uid, { email });
-}
-
-export async function updateUserEmailVerified(uid: string, verified: boolean): Promise<void> {
-  const db = getAdminDb();
-  const userRef = db.collection("users").doc(uid);
-  await userRef.update({
-    emailVerified: verified,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  });
-}
-
-export async function updateUserEmailInFirestore(uid: string, email: string): Promise<void> {
-  const db = getAdminDb();
-  const userRef = db.collection("users").doc(uid);
-  await userRef.update({
-    email: email,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  });
-}
-
 export interface ActionLinkResult {
   oobLink: string;
   oobCode: string;
@@ -201,32 +104,6 @@ function getAppUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
 
-export async function generatePasswordResetLink(email: string): Promise<ActionLinkResult> {
-  const auth = getAdminAuth();
-  const appUrl = getAppUrl();
-  
-  const link = await auth.generatePasswordResetLink(email, {
-    url: `${appUrl}/auth/action?mode=resetPassword`,
-    handleCodeInApp: true,
-  });
-  
-  const oobCode = extractOobCode(link);
-  return { oobLink: link, oobCode };
-}
-
-export async function generateEmailVerificationLink(email: string): Promise<ActionLinkResult> {
-  const auth = getAdminAuth();
-  const appUrl = getAppUrl();
-  
-  const link = await auth.generateSignInWithEmailLink(email, {
-    url: `${appUrl}/auth/action?mode=verifyEmail`,
-    handleCodeInApp: true,
-  });
-  
-  const oobCode = extractOobCode(link);
-  return { oobLink: link, oobCode };
-}
-
 function extractOobCode(link: string): string {
   try {
     const url = new URL(link);
@@ -234,4 +111,38 @@ function extractOobCode(link: string): string {
   } catch {
     return "";
   }
+}
+
+export async function generatePasswordResetLink(email: string): Promise<ActionLinkResult> {
+  const auth = getAdminAuth() as {
+    generatePasswordResetLink(email: string, options?: { url?: string; handleCodeInApp?: boolean }): Promise<string>;
+  };
+  const appUrl = getAppUrl();
+  
+  const link = await auth.generatePasswordResetLink(email, {
+    url: `${appUrl}/auth/action`,
+    handleCodeInApp: false,
+  });
+  
+  const oobCode = extractOobCode(link);
+  const finalLink = `${appUrl}/auth/action?mode=resetPassword&oobCode=${oobCode}`;
+  
+  return { oobLink: finalLink, oobCode };
+}
+
+export async function generateEmailVerificationLink(email: string): Promise<ActionLinkResult> {
+  const auth = getAdminAuth() as {
+    generateEmailVerificationLink(email: string, options?: { url?: string; handleCodeInApp?: boolean }): Promise<string>;
+  };
+  const appUrl = getAppUrl();
+  
+  const link = await auth.generateEmailVerificationLink(email, {
+    url: `${appUrl}/auth/action`,
+    handleCodeInApp: false,
+  });
+  
+  const oobCode = extractOobCode(link);
+  const finalLink = `${appUrl}/auth/action?mode=verifyEmail&oobCode=${oobCode}`;
+  
+  return { oobLink: finalLink, oobCode };
 }

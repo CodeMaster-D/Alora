@@ -60,7 +60,14 @@ export default function LoginPage() {
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        if (result.needsVerification) {
+        const pendingVerification = sessionStorage.getItem("pendingVerification");
+        
+        if (pendingVerification) {
+          sessionStorage.removeItem("pendingVerification");
+          const { oobCode, mode } = JSON.parse(pendingVerification);
+          toast.success("Login Successful!");
+          router.push(`/auth/action?oobCode=${oobCode}&mode=${mode}`);
+        } else if (result.needsVerification) {
           toast.error("Please verify your email first.", {
             description: "Check your inbox for the verification link.",
             action: {
@@ -87,8 +94,17 @@ export default function LoginPage() {
     try {
       const success = await loginWithGoogle();
       if (success) {
-        toast.success("Login with Google Successful!");
-        router.push("/dashboard");
+        const pendingVerification = sessionStorage.getItem("pendingVerification");
+        
+        if (pendingVerification) {
+          sessionStorage.removeItem("pendingVerification");
+          const { oobCode, mode } = JSON.parse(pendingVerification);
+          toast.success("Login with Google Successful!");
+          router.push(`/auth/action?oobCode=${oobCode}&mode=${mode}`);
+        } else {
+          toast.success("Login with Google Successful!");
+          router.push("/dashboard");
+        }
       } else {
         toast.error("Failed to login with Google.");
       }
