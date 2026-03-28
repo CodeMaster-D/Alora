@@ -68,14 +68,7 @@ export default function RegisterPage() {
       const result = await register(formData.email, formData.password, formData.displayName);
       
       if (result.success) {
-        if (result.verificationSent) {
-          setVerificationSent(true);
-        } else {
-          toast.success("Akun Berhasil Dibuat!", {
-            description: "Selamat datang di komunitas Alora.",
-          });
-          router.push("/dashboard");
-        }
+        setVerificationSent(true);
       } else {
         toast.error("Registrasi Gagal", {
           description: "Terjadi kendala saat membuat akun Anda. Coba beberapa saat lagi.",

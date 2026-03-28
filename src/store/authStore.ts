@@ -127,9 +127,16 @@ export const useAuthStore = create<AuthState>()(
                 }),
               });
               const emailData = await emailResponse.json();
+              
+              if (!emailData.success) {
+                console.error("Verification email failed:", emailData.error);
+              }
+              
               set({ emailVerificationSent: emailData.success });
               return { success: true, verificationSent: emailData.success };
-            } catch {
+            } catch (emailError) {
+              console.error("Verification email error:", emailError);
+              set({ emailVerificationSent: false });
               return { success: true, verificationSent: false };
             }
           } else {

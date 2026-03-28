@@ -1,5 +1,14 @@
 import * as admin from 'firebase-admin';
 
+// Polyfill location for serverless environments
+if (typeof globalThis.location === 'undefined') {
+  (globalThis as Record<string, unknown>).location = {
+    hostname: process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'localhost',
+    href: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    protocol: 'https:',
+  };
+}
+
 // Singleton pattern for serverless environments
 let adminApp: admin.app.App | null = null;
 let adminDb: admin.firestore.Firestore | null = null;
@@ -87,41 +96,25 @@ export const updateStreak = async (userId: string) => {
 };
 
 // Auth action handlers for Vercel serverless functions
-// Type definitions for action code functions
-interface ActionCodeInfoData {
-  email?: string;
-  previousEmail?: string;
-  newEmail?: string;
-}
-
-interface ActionCodeInfo {
-  data: ActionCodeInfoData;
-}
-
 export interface ActionCodeResult {
   email?: string;
   previousEmail?: string;
   newEmail?: string;
 }
 
-interface AuthWithActionCodes {
-  verifyActionCode(code: string): Promise<ActionCodeInfo>;
-  applyActionCode(code: string): Promise<admin.auth.UserRecord>;
-}
-
 export async function verifyActionCode(oobCode: string): Promise<ActionCodeResult> {
-  const auth = getAdminAuth() as unknown as AuthWithActionCodes;
-  const actionCode = await auth.verifyActionCode(oobCode);
+  const auth = getAdminAuth() as unknown as Record<string, Function>;
+  const actionCode = await (auth.verifyActionCode as (code: string) => Promise<Record<string, unknown>>)(oobCode);
   return {
-    email: actionCode.data?.email,
-    previousEmail: actionCode.data?.previousEmail,
-    newEmail: actionCode.data?.newEmail,
+    email: actionCode.email as string,
+    previousEmail: actionCode.previousEmail as string,
+    newEmail: actionCode.newEmail as string,
   };
 }
 
 export async function applyActionCode(oobCode: string): Promise<admin.auth.UserRecord> {
-  const auth = getAdminAuth() as unknown as AuthWithActionCodes;
-  return auth.applyActionCode(oobCode);
+  const auth = getAdminAuth() as unknown as Record<string, Function>;
+  return (auth.applyActionCode as (code: string) => Promise<admin.auth.UserRecord>)(oobCode);
 }
 
 export async function getUserByEmail(email: string): Promise<admin.auth.UserRecord> {
@@ -155,4 +148,48 @@ export async function updateUserEmailInFirestore(uid: string, email: string): Pr
     email: email,
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   });
+}
+
+export interface ActionLinkResult {
+  oobLink: string;
+  oobCode: string;
+}
+
+function getAppUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
+
+export async function generatePasswordResetLink(email: string): Promise<ActionLinkResult> {
+  const auth = getAdminAuth();
+  const appUrl = getAppUrl();
+  
+  const link = await auth.generatePasswordResetLink(email, {
+    url: `${appUrl}/auth/action?mode=resetPassword`,
+    handleCodeInApp: true,
+  });
+  
+  const oobCode = extractOobCode(link);
+  return { oobLink: link, oobCode };
+}
+
+export async function generateEmailVerificationLink(email: string): Promise<ActionLinkResult> {
+  const auth = getAdminAuth();
+  const appUrl = getAppUrl();
+  
+  const link = await auth.generateSignInWithEmailLink(email, {
+    url: `${appUrl}/auth/action?mode=verifyEmail`,
+    handleCodeInApp: true,
+  });
+  
+  const oobCode = extractOobCode(link);
+  return { oobLink: link, oobCode };
+}
+
+function extractOobCode(link: string): string {
+  try {
+    const url = new URL(link);
+    return url.searchParams.get("oobCode") || "";
+  } catch {
+    return "";
+  }
 }
